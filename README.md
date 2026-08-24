@@ -42,6 +42,43 @@ would invent its own composition and pull against the blockout instead.
 </tr>
 </table>
 
+## The second shot, and the first honest failure
+
+*2026-08-25.* A harder test: ten seconds instead of five, a 48-object street
+built from primitives, and a 20mm camera that runs 112 m down a dead-end at
+80 km/h, weaves twice, climbs a wall and crests a roof. Blockout on top, result
+below, at matched times.
+
+![blockout against result](projects/nyc/sequences/seq_010/sh_0010/artifacts/seq_010_sh_0010_street_a_6de41e_sheet_v005_vs_render_v001.jpg)
+
+**What it settled.** Above the roof line the geometry is *empty* — there is no
+bay, no bridge, no sunset, no distant skyline anywhere in the scene. All four
+came from the prompt and stayed put for the whole reveal. A backdrop that only
+appears at the end of a move does not have to be built.
+
+**What it broke.** From roughly 20% to 40% two raw white boxes sit in the road,
+untextured, while the buildings and kerbs around them are fully rendered. They
+are the two cars standing out in the traffic lane — the closest geometry in the
+shot, passed at 0.85 m to sell the speed.
+
+The cause is not that a cube is a poor car. It is that **the two references were
+handed contradictory accounts of the same surface**: the blockout said *there are
+objects standing here*, the style still said *the road is empty*, and the style
+still is what the model was told to take material from. There was no material for
+a thing the look reference does not contain. Proximity is the other half — the
+same cubes read as parked cars perfectly well at twenty metres along the kerb,
+where the street supplies the answer; at under a metre, filling a third of frame,
+there is no context left and nothing in a 1.9 × 4.6 m box to infer from.
+
+Which is the useful shape of the finding, because it is a rule rather than a
+verdict: **a primitive only has to look like its object at the distance it is
+seen from — and the style reference has to contain that object at all.**
+
+Full account with the provider log in
+[`generations.md`](projects/nyc/sequences/seq_010/sh_0010/generations.md); what
+building the blockout taught is in
+[`notes.md`](projects/nyc/sequences/seq_010/sh_0010/notes.md).
+
 ## Three strands
 
 The project is early, and it is deliberately three things at once, because
