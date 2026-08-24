@@ -2,7 +2,8 @@
 
 *What building this shot established. [brief.md](brief.md) is what was asked for;
 this is what the asking turned into, and what the blockout taught on the way.
-Renders referenced here are in [artifacts/](artifacts).*
+The blockout is in [preview/](preview); the sheets and views behind these notes
+are in [artifacts/](artifacts).*
 
 ## The numbers the scene is built on
 

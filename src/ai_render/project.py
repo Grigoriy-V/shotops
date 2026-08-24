@@ -25,6 +25,7 @@ See docs/design/pipeline-structure.md for the reasoning.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 PROJECTS_DIR = "projects"
@@ -73,13 +74,62 @@ class Target:
 
     @property
     def artifacts_dir(self):
-        """Where views, sheets and debug renders are kept.
+        """Sheets, views and debug renders -- the working record.
 
         Inside the shot, not in `out/`: these are the record of how a decision
         was reached, and they are meant to be committed. An image that exists
         only in a chat window is lost to the next session.
         """
         return self.scene_path.parent / "artifacts"
+
+    @property
+    def preview_dir(self):
+        """The blockout itself, kept apart from the record of how it was made.
+
+        One of these is the deliverable and the rest are evidence. Mixed into one
+        directory the video is something to hunt for; on its own it is the first
+        thing anyone opens.
+        """
+        return self.scene_path.parent / "preview"
+
+    @property
+    def stem(self):
+        """File-name identity, e.g. `seq_010_sh_0010_street_a`.
+
+        The project is not in it: these files sit inside the project already, and
+        a name that repeats its own directory is noise. What it does carry is
+        everything that would otherwise be ambiguous once a file is downloaded,
+        pasted into a message, or sat next to a file from another shot.
+        """
+        if self.kind == "shot":
+            return f"{self.sequence}_{self.shot}_{self.scene}"
+        if self.kind == "asset":
+            return f"{ASSETS_DIR}_{self.scene}"
+        return self.scene
+
+    def name(self, version, suffix=None):
+        """`seq_010_sh_0010_street_a_v003_frames`, or without the suffix."""
+        return f"{self.stem}_v{version:03d}" + (f"_{suffix}" if suffix else "")
+
+    def next_version(self):
+        """One counter for the scene, shared by both directories.
+
+        Shared so that a preview and the sheet made from the same run carry the
+        same number and can be read as one thing. Taken from what is on disk
+        rather than from a stored count, so it is monotonic and nothing is ever
+        renumbered by deleting an old file -- a version in a committed name has
+        to keep meaning what it meant.
+        """
+        pattern = re.compile(re.escape(self.stem) + r"_v(\d+)")
+        highest = 0
+        for directory in (self.preview_dir, self.artifacts_dir):
+            if not directory.is_dir():
+                continue
+            for path in directory.iterdir():
+                found = pattern.match(path.name)
+                if found:
+                    highest = max(highest, int(found.group(1)))
+        return highest + 1
 
     @property
     def label(self):

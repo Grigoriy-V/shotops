@@ -58,34 +58,30 @@ def cmd_views(args):
     import tempfile
 
     scene, target = _load(args.scene)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out_dir = target.artifacts_dir / f"{stamp}_views"
+    version = target.next_version()
+    sheet_path = target.artifacts_dir / f"{target.name(version, 'views')}.jpg"
 
     # The merged spec is what describes the scene; the file on disk is only its
-    # most specific layer.
+    # most specific layer. The individual PNGs are never kept -- they are four
+    # times the sheet's size, this directory gets committed, and re-rendering
+    # them costs three seconds.
     with tempfile.TemporaryDirectory() as tmp:
         merged = Path(tmp) / "scene.json"
         merged.write_text(json.dumps(scene, indent=2, ensure_ascii=False), encoding="utf-8")
-        made = blender_runner.render_views(merged, tmp_views := out_dir, verbose=args.verbose)
-        sheet = compare.grid(made, out_dir.with_suffix(".jpg"), columns=2, labelled=True)
-
-    # Only the sheet is kept. The individual PNGs are four times its size, live
-    # in a directory that gets committed, and are three seconds away from being
-    # regenerated -- derived and reproducible, so not worth storing.
-    for png in tmp_views.glob("view_*.png"):
-        png.unlink()
-    tmp_views.rmdir()
+        made = blender_runner.render_views(merged, Path(tmp) / "views", verbose=args.verbose)
+        sheet = compare.grid(made, sheet_path, columns=2, labelled=True)
 
     print(f"[views] {len(made)} views -> {_rel(sheet)}")
     return 0
 
 
 def cmd_sheet(args):
-    """Keep a take's record with the shot: the stills sheet and the blockout itself.
+    """Keep a take with the shot: the blockout in preview/, its stills in artifacts/.
 
     The video is the thing actually being judged, so it belongs in the record
     too. It is small -- a 10s grey blockout is under a megabyte -- and without it
-    the sheet is eight frames with no motion between them.
+    the sheet is eight frames with no motion between them. Both carry the same
+    version, because they are one render seen two ways.
     """
     import shutil
 
@@ -96,17 +92,21 @@ def cmd_sheet(args):
         print(f"error: no stills in {_rel(take / 'frames')}", file=sys.stderr)
         return 2
 
-    target.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    version = target.next_version()
     sheet = compare.grid(
-        frames, target.artifacts_dir / f"{take.name}_frames.jpg", columns=4, labelled=True
+        frames,
+        target.artifacts_dir / f"{target.name(version, 'frames')}.jpg",
+        columns=4,
+        labelled=True,
     )
     print(f"[sheet] {len(frames)} frames -> {_rel(sheet)}")
 
     preview = take / "preview.mp4"
     if preview.exists():
-        kept = target.artifacts_dir / f"{take.name}_blockout.mp4"
+        target.preview_dir.mkdir(parents=True, exist_ok=True)
+        kept = target.preview_dir / f"{target.name(version)}.mp4"
         shutil.copyfile(preview, kept)
-        print(f"[sheet] blockout -> {_rel(kept)} ({kept.stat().st_size / 1e6:.1f} MB)")
+        print(f"[sheet] preview -> {_rel(kept)} ({kept.stat().st_size / 1e6:.1f} MB)")
     return 0
 
 
@@ -298,7 +298,7 @@ def main(argv=None):
         ("all", cmd_all, "render, then generate"),
         ("takes", cmd_takes, "list takes and generations for a scene"),
         ("views", cmd_views, "top/front/side/3-quarter of the scene, camera path drawn"),
-        ("sheet", cmd_sheet, "contact sheet of a take's stills, kept with the shot"),
+        ("sheet", cmd_sheet, "keep a take with the shot: blockout to preview/, stills to artifacts/"),
         ("styleframe", cmd_styleframe, "GPT Image 2 -> <take>/styleframe.png"),
         ("compare", cmd_compare, "side-by-side sheet: blockout vs result"),
     ]:

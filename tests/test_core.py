@@ -76,7 +76,12 @@ failures = []
 
 
 def check(label, got, want, tol=1e-6):
-    ok = all(abs(a - b) <= tol for a, b in zip(got, want)) if isinstance(want, list) else abs(got - want) <= tol
+    if isinstance(want, str):
+        ok = got == want
+    elif isinstance(want, list):
+        ok = all(abs(a - b) <= tol for a, b in zip(got, want))
+    else:
+        ok = abs(got - want) <= tol
     if not ok:
         failures.append(f"{label}: got {got}, want {want}")
     print(f"  {'ok  ' if ok else 'FAIL'} {label}")
@@ -244,6 +249,42 @@ def expect_project_error(label, path):
 
 expect_project_error("a level file is not a scene", DEMO_SHOT / "shot.json")
 expect_project_error("project file is not a scene", ROOT / "projects" / "demo" / "project.json")
+
+print("project structure -- artifact names")
+import tempfile as _tempfile  # noqa: E402
+
+nyc_scene = ROOT / "projects" / "nyc" / "sequences" / "seq_010" / "sh_0010" / "street_a.json"
+nyc = project_mod.resolve(nyc_scene)
+check("stem carries sequence, shot and scene", nyc.stem, "seq_010_sh_0010_street_a")
+check("no project in the name", "nyc" not in nyc.stem, True)
+check("preview name has no suffix", nyc.name(5), "seq_010_sh_0010_street_a_v005")
+check("suffixed name", nyc.name(12, "frames"), "seq_010_sh_0010_street_a_v012_frames")
+check("standalone falls back to the scene", project_mod.resolve(ROOT / "loose.json").stem, "loose")
+
+with _tempfile.TemporaryDirectory() as _tmp:
+    shot_dir = Path(_tmp) / "projects" / "p" / "sequences" / "seq_010" / "sh_0010"
+    shot_dir.mkdir(parents=True)
+    (shot_dir / "a.json").write_text("{}", encoding="utf-8")
+    fresh = project_mod.resolve(shot_dir / "a.json")
+    check("first version is 1", fresh.next_version(), 1)
+
+    fresh.artifacts_dir.mkdir()
+    (fresh.artifacts_dir / f"{fresh.name(1, 'frames')}.jpg").write_text("x", encoding="utf-8")
+    check("counts what is on disk", fresh.next_version(), 2)
+
+    # Shared across both directories: a preview and the sheet from the same run
+    # have to carry the same number, so neither may advance alone.
+    fresh.preview_dir.mkdir()
+    (fresh.preview_dir / f"{fresh.name(7)}.mp4").write_text("x", encoding="utf-8")
+    check("preview counts too", fresh.next_version(), 8)
+
+    # Deleting an old file must not renumber a name that is already committed.
+    (fresh.artifacts_dir / f"{fresh.name(1, 'frames')}.jpg").unlink()
+    check("high-water mark, not a count", fresh.next_version(), 8)
+
+    (shot_dir / "b.json").write_text("{}", encoding="utf-8")
+    other = project_mod.resolve(shot_dir / "b.json")
+    check("a sibling scene counts separately", other.next_version(), 1)
 
 print("project structure -- inheritance")
 merged = project_mod.merge(

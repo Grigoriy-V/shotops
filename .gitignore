@@ -5,8 +5,8 @@
 .tools/
 
 # Renders, generations, manifests -- all reproducible from projects/.
-# Note the exception: <shot>/artifacts/ is committed on purpose. Those are the
-# record of how a shot got decided, not an output.
+# Note the exception: <shot>/preview/ and <shot>/artifacts/ are committed on
+# purpose -- the blockout, and the record of how the shot got decided.
 out/
 
 __pycache__/

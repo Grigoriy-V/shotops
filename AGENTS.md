@@ -114,15 +114,22 @@ goes in that shot's `notes.md`, next to the spec that proved it.
 ## Keep the working record in the shot
 
 Every view, sheet, sketch or debug render that gets made -- including anything
-shown in chat -- is written to `<shot>/artifacts/`. Chat is not storage: an image
-that only exists in a conversation is lost to the next session and to anyone
-else.
+shown in chat -- is written into the shot. Chat is not storage: an image that
+only exists in a conversation is lost to the next session and to anyone else.
+
+- `<shot>/preview/` — the blockout video, and nothing else. It is the
+  deliverable, and it should not have to be hunted for.
+- `<shot>/artifacts/` — sheets, views, debug renders. The evidence.
+
+Names are `<sequence>_<shot>_<scene>_v###`, with a suffix on everything but the
+preview. Never hand-name a file: `target.name(target.next_version(), ...)` picks
+it, so the version stays monotonic and a preview shares its number with the sheet
+made from the same run.
 
 This is a deliberate exception to "outputs are derived, so `out/` is gitignored".
 These are not outputs, they are the record of how a decision was reached: the
 frame that showed the wall was empty, the sheet that proved the camera held. Keep
-them small (downscaled JPEG/PNG), name them with a stamp, and let them be
-committed.
+them small (downscaled JPEG, short video) and let them be committed.
 
 `out/` still holds the real renders and generations, still disposable, still
 reproducible from the spec.

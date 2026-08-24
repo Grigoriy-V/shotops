@@ -292,7 +292,7 @@ $env:PYTHONPATH="src"; python -m ai_render all projects/demo/sequences/seq_010/s
 | `styleframe <scene>` | restyle a blockout frame into a look reference |
 | `compare <scene>` | contact sheet, blockout vs result at matched times |
 | `views <scene>` | top/front/side/3-quarter of the scene, camera path drawn |
-| `sheet <scene>` | contact sheet of a take's stills |
+| `sheet <scene>` | keep a take with the shot: blockout to `preview/`, stills to `artifacts/` |
 | `extract <video>` | pull stills from any clip for comparison |
 | `fetch <task-id>` | re-download a finished task without paying again |
 
@@ -309,8 +309,11 @@ projects/nyc/
     sh_0010/
       shot.json                 <- duration, and which scene the shot currently is
       brief.md                  <- the authored intent
+      notes.md                  <- what building it taught
       street_a.json             <- a scene: one way of staging the shot
       street_b.json             <- another, in parallel
+      preview/                  <- the blockout, one file per version
+      artifacts/                <- sheets and views, the working record
 ```
 
 Each level holds only what differs at that level; a scene inherits the rest.
@@ -324,14 +327,34 @@ Numbering goes up in tens — `sh_0010`, `sh_0020` — so inserting a shot later
 naming problem that is already solved rather than a renumbering that invalidates
 every path in `out/`.
 
-### Artifacts stay with the shot
+### The preview, and the record of how it got there
 
-`views` and `sheet` write into `<shot>/artifacts/`, not into `out/`. That is a
-deliberate exception to "outputs are derived, so they are disposable": these are
-not outputs, they are the record of how a decision was reached — the view that
-showed the wall was empty, the sheet that proved the camera held. They are small,
-stamped, and committed. An image that exists only in a chat window is lost to
-the next session.
+`views` and `sheet` write into the shot, not into `out/`. That is a deliberate
+exception to "outputs are derived, so they are disposable": these are not
+outputs, they are the record of how a decision was reached — the view that showed
+the wall was empty, the sheet that proved the camera held. They are small and
+committed. An image that exists only in a chat window is lost to the next
+session.
+
+Two directories, because one of these is the deliverable and the rest are
+evidence:
+
+```
+<shot>/preview/    seq_010_sh_0010_street_a_v005.mp4          <- the blockout
+<shot>/artifacts/  seq_010_sh_0010_street_a_v005_frames.jpg   <- its stills
+                   seq_010_sh_0010_street_a_v006_views.jpg    <- top/front/side/3q
+```
+
+The name carries sequence, shot, scene and version — everything that would
+otherwise be ambiguous the moment a file is downloaded, pasted into a message, or
+sat next to a file from another shot. The project is left out: these live inside
+it already.
+
+One version counter serves the whole scene, so a preview and the sheet made from
+the same run share a number and read as one thing. It is taken from what is on
+disk rather than from a stored count, which makes it monotonic: deleting an old
+file never renumbers a newer one, because a version in a committed name has to
+keep meaning what it meant.
 
 ### Output layout
 
