@@ -131,7 +131,8 @@ cannot gain an MCP surface later for the interactive half.
 ## What this changes for shotops
 
 **Do not adopt MCP for scene building.** It would trade determinism and headless
-operation for interactivity we do not need.
+operation for interactivity we do not need. The full argument, with the loop
+timed, is in [docs/design/feedback-loop.md](../design/feedback-loop.md).
 
 **A vision critique loop is the strongest borrowable idea** — render, look,
 adjust the spec, before any paid generation.

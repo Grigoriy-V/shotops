@@ -163,8 +163,11 @@ by an agent, validated before anything renders, and every output traces back to
 the exact spec that produced it.
 
 [`docs/research/`](docs/research/) carries the survey: who else is building this,
-which models actually honour a blockout, and why agentic Blender work splits into
-MCP for the viewport and specs for the pipeline.
+which models actually honour a blockout, the blocking craft that decides a shot,
+and why agentic Blender work splits into MCP for the viewport and specs for the
+pipeline. [`docs/design/`](docs/design/) records decisions that came out of it —
+starting with [how the agent checks its own
+scene](docs/design/feedback-loop.md).
 
 ## How it fits together
 
