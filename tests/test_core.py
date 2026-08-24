@@ -4,6 +4,7 @@ build_scene.py lives inside Blender, but its interpolation is stdlib-only, so we
 import it with stub bpy/mathutils modules and exercise the math directly.
 """
 
+import importlib
 import json
 import math
 import os
@@ -51,8 +52,8 @@ class Quat:
         return [self.w, self.x, self.y, self.z]
 
 
-def _load_build_scene():
-    """Import blender/build_scene.py with bpy and mathutils stubbed out."""
+def _load_blender_script(name):
+    """Import one of blender/*.py with bpy and mathutils stubbed out."""
     if "bpy" not in sys.modules:
         bpy = types.ModuleType("bpy")
         bpy.ops = types.SimpleNamespace()
@@ -66,22 +67,20 @@ def _load_build_scene():
         sys.modules["mathutils"] = mathutils
 
     sys.path.insert(0, str(ROOT / "blender"))
-    import build_scene
-
-    return build_scene
+    return importlib.import_module(name)
 
 
-bs = _load_build_scene()
+bs = _load_blender_script("build_scene")
 failures = []
 
 
 def check(label, got, want, tol=1e-6):
-    if isinstance(want, str):
-        ok = got == want
-    elif isinstance(want, list):
-        ok = all(abs(a - b) <= tol for a, b in zip(got, want))
-    else:
+    if isinstance(want, list) and all(isinstance(v, (int, float)) for v in want):
+        ok = len(got) == len(want) and all(abs(a - b) <= tol for a, b in zip(got, want))
+    elif isinstance(want, (int, float)) and not isinstance(want, bool):
         ok = abs(got - want) <= tol
+    else:
+        ok = got == want
     if not ok:
         failures.append(f"{label}: got {got}, want {want}")
     print(f"  {'ok  ' if ok else 'FAIL'} {label}")
@@ -250,6 +249,14 @@ def expect_project_error(label, path):
 expect_project_error("a level file is not a scene", DEMO_SHOT / "shot.json")
 expect_project_error("project file is not a scene", ROOT / "projects" / "demo" / "project.json")
 
+print("still positions -- first and last always included")
+rf = _load_blender_script("render_frames")
+check("five spans the shot", rf.positions(5), [0.0, 0.25, 0.5, 0.75, 1.0])
+check("two is just the ends", rf.positions(2), [0.0, 1.0])
+check("one does not divide by zero", rf.positions(1), [0.0])
+check("names round to whole percent", ["t%03d" % round(p * 100) for p in rf.positions(5)],
+      ["t000", "t025", "t050", "t075", "t100"])
+
 print("project structure -- artifact names")
 import tempfile as _tempfile  # noqa: E402
 
@@ -278,9 +285,13 @@ with _tempfile.TemporaryDirectory() as _tmp:
     (fresh.preview_dir / f"{fresh.name(7)}.mp4").write_text("x", encoding="utf-8")
     check("preview counts too", fresh.next_version(), 8)
 
+    fresh.frames_dir.mkdir()
+    (fresh.frames_dir / f"{fresh.name(9, 't050')}.png").write_text("x", encoding="utf-8")
+    check("stills count too", fresh.next_version(), 10)
+
     # Deleting an old file must not renumber a name that is already committed.
     (fresh.artifacts_dir / f"{fresh.name(1, 'frames')}.jpg").unlink()
-    check("high-water mark, not a count", fresh.next_version(), 8)
+    check("high-water mark, not a count", fresh.next_version(), 10)
 
     (shot_dir / "b.json").write_text("{}", encoding="utf-8")
     other = project_mod.resolve(shot_dir / "b.json")

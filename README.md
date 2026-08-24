@@ -292,6 +292,7 @@ $env:PYTHONPATH="src"; python -m ai_render all projects/demo/sequences/seq_010/s
 | `styleframe <scene>` | restyle a blockout frame into a look reference |
 | `compare <scene>` | contact sheet, blockout vs result at matched times |
 | `views <scene>` | top/front/side/3-quarter of the scene, camera path drawn |
+| `frames <scene>` | individual stills through the shot → `<shot>/frames/` |
 | `sheet <scene>` | keep a take with the shot: blockout to `preview/`, stills to `artifacts/` |
 | `extract <video>` | pull stills from any clip for comparison |
 | `fetch <task-id>` | re-download a finished task without paying again |
@@ -313,6 +314,7 @@ projects/nyc/
       street_a.json             <- a scene: one way of staging the shot
       street_b.json             <- another, in parallel
       preview/                  <- the blockout, one file per version
+      frames/                   <- individual stills, the input to a style frame
       artifacts/                <- sheets and views, the working record
 ```
 
@@ -336,14 +338,25 @@ the wall was empty, the sheet that proved the camera held. They are small and
 committed. An image that exists only in a chat window is lost to the next
 session.
 
-Two directories, because one of these is the deliverable and the rest are
-evidence:
+Three directories, because these are three different kinds of thing — one is the
+deliverable, one is an input to what comes next, and the rest is evidence:
 
 ```
 <shot>/preview/    seq_010_sh_0010_street_a_v005.mp4          <- the blockout
-<shot>/artifacts/  seq_010_sh_0010_street_a_v005_frames.jpg   <- its stills
+<shot>/frames/     seq_010_sh_0010_street_a_v008_t000.png     <- stills, by position
+                   seq_010_sh_0010_street_a_v008_t025.png        through the shot
+                   ...
+<shot>/artifacts/  seq_010_sh_0010_street_a_v005_frames.jpg   <- contact sheet
                    seq_010_sh_0010_street_a_v006_views.jpg    <- top/front/side/3q
 ```
+
+`frames` renders stills straight from the spec at full size — evenly spaced, first
+and last always included, so five gives 0, 25, 50, 75 and 100 percent. They are
+named by position rather than by index, because the moment is what matters when
+one of them is picked to become a style frame, and it stays true if the count
+changes. They are not pulled out of the preview: an image model sees whatever it
+is handed, and there is no reason to hand it something that has been through a
+video codec.
 
 The name carries sequence, shot, scene and version — everything that would
 otherwise be ambiguous the moment a file is downloaded, pasted into a message, or

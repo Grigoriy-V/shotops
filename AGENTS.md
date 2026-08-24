@@ -119,12 +119,18 @@ only exists in a conversation is lost to the next session and to anyone else.
 
 - `<shot>/preview/` — the blockout video, and nothing else. It is the
   deliverable, and it should not have to be hunted for.
+- `<shot>/frames/` — individual stills, named by position through the shot. Not
+  evidence: these are the input a style frame gets generated from.
 - `<shot>/artifacts/` — sheets, views, debug renders. The evidence.
 
 Names are `<sequence>_<shot>_<scene>_v###`, with a suffix on everything but the
 preview. Never hand-name a file: `target.name(target.next_version(), ...)` picks
 it, so the version stays monotonic and a preview shares its number with the sheet
-made from the same run.
+and the stills from the same run.
+
+`frames` is the one that costs real space — five PNGs is about 1.6 MB, and every
+version of it stays in history. Run it when heading for a generation, not after
+every render. `views` and `sheet` are cheap; use those to iterate.
 
 This is a deliberate exception to "outputs are derived, so `out/` is gitignored".
 These are not outputs, they are the record of how a decision was reached: the

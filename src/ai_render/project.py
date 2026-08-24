@@ -93,6 +93,16 @@ class Target:
         return self.scene_path.parent / "preview"
 
     @property
+    def frames_dir(self):
+        """Individual stills through the shot, kept for what comes next.
+
+        Not evidence and not the deliverable: these are an input. A style frame
+        is generated from one of them, and reference modes that take images
+        rather than a clip are fed from here.
+        """
+        return self.scene_path.parent / "frames"
+
+    @property
     def stem(self):
         """File-name identity, e.g. `seq_010_sh_0010_street_a`.
 
@@ -112,17 +122,17 @@ class Target:
         return f"{self.stem}_v{version:03d}" + (f"_{suffix}" if suffix else "")
 
     def next_version(self):
-        """One counter for the scene, shared by both directories.
+        """One counter for the scene, shared by every directory in the shot.
 
-        Shared so that a preview and the sheet made from the same run carry the
-        same number and can be read as one thing. Taken from what is on disk
-        rather than from a stored count, so it is monotonic and nothing is ever
-        renumbered by deleting an old file -- a version in a committed name has
-        to keep meaning what it meant.
+        Shared so that a preview, the sheet made from the same run and the stills
+        cut from it carry the same number and can be read as one thing. Taken
+        from what is on disk rather than from a stored count, so it is monotonic
+        and nothing is ever renumbered by deleting an old file -- a version in a
+        committed name has to keep meaning what it meant.
         """
         pattern = re.compile(re.escape(self.stem) + r"_v(\d+)")
         highest = 0
-        for directory in (self.preview_dir, self.artifacts_dir):
+        for directory in (self.preview_dir, self.artifacts_dir, self.frames_dir):
             if not directory.is_dir():
                 continue
             for path in directory.iterdir():

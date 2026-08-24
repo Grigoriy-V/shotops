@@ -75,6 +75,43 @@ def cmd_views(args):
     return 0
 
 
+def cmd_frames(args):
+    """Render individual stills through the shot into `<shot>/frames/`.
+
+    These are an input, not a record: a style frame gets generated from one of
+    them, so they are rendered straight from the spec at full size rather than
+    pulled out of a compressed preview. Evenly spaced, first and last always
+    included -- five gives 0, 25, 50, 75 and 100 percent.
+    """
+    import json
+    import shutil
+    import tempfile
+
+    scene, target = _load(args.scene)
+    version = target.next_version()
+    target.frames_dir.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        merged = Path(tmp) / "scene.json"
+        merged.write_text(json.dumps(scene, indent=2, ensure_ascii=False), encoding="utf-8")
+        made = blender_runner.render_frames(
+            merged, Path(tmp) / "frames", count=args.count, verbose=args.verbose
+        )
+        kept = []
+        for path in made:
+            # `t050` is the position through the shot; carry it through as the
+            # suffix so the name says which moment this is.
+            out = target.frames_dir / f"{target.name(version, path.stem)}.png"
+            shutil.copyfile(path, out)
+            kept.append(out)
+
+    total = sum(p.stat().st_size for p in kept) / 1e6
+    print(f"[frames] {len(kept)} frames -> {_rel(target.frames_dir)} ({total:.1f} MB)")
+    for path in kept:
+        print(f"           {path.name}")
+    return 0
+
+
 def cmd_sheet(args):
     """Keep a take with the shot: the blockout in preview/, its stills in artifacts/.
 
@@ -298,6 +335,7 @@ def main(argv=None):
         ("all", cmd_all, "render, then generate"),
         ("takes", cmd_takes, "list takes and generations for a scene"),
         ("views", cmd_views, "top/front/side/3-quarter of the scene, camera path drawn"),
+        ("frames", cmd_frames, "individual stills through the shot -> <shot>/frames/"),
         ("sheet", cmd_sheet, "keep a take with the shot: blockout to preview/, stills to artifacts/"),
         ("styleframe", cmd_styleframe, "GPT Image 2 -> <take>/styleframe.png"),
         ("compare", cmd_compare, "side-by-side sheet: blockout vs result"),
@@ -328,6 +366,11 @@ def main(argv=None):
                 help="also pull N stills from the result and build a comparison sheet",
             )
             p.add_argument("--style", help="style reference image (default: <take>/styleframe.png)")
+        if name == "frames":
+            p.add_argument(
+                "--count", type=int, default=5,
+                help="how many stills, evenly spaced, first and last included (default: 5)",
+            )
         if name in ("generate", "styleframe", "compare", "sheet"):
             p.add_argument("--take", help="use a specific take (default: the newest)")
         if name == "styleframe":

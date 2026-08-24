@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BUILD_SCRIPT = ROOT / "blender" / "build_scene.py"
 VIEWS_SCRIPT = ROOT / "blender" / "render_views.py"
+FRAMES_SCRIPT = ROOT / "blender" / "render_frames.py"
 
 _CANDIDATES = [
     # The portable build this project fetches for itself wins over any system
@@ -58,15 +59,20 @@ def find_blender():
     )
 
 
-def render_views(spec_path, out_dir, verbose=False):
-    """Render top, front, side and three-quarter views with the camera path drawn."""
+def _run_script(script, label, spec_path, out_dir, glob, extra=(), verbose=False):
+    """Drive one of the small Blender scripts and return what it wrote.
+
+    Absolute on this side too, so the path in the log is the path on disk -- and
+    so a Blender that resolves relative paths against a blend file it does not
+    have cannot quietly write to the drive root.
+    """
     blender = find_blender()
-    # Absolute on this side too, so the path in the log is the path on disk.
     out_dir = Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    cmd = [blender, "-b", "-noaudio", "-P", str(VIEWS_SCRIPT), "--", str(spec_path), str(out_dir)]
-    print(f"[views] {Path(blender).name} -> {out_dir}")
+    cmd = [blender, "-b", "-noaudio", "-P", str(script), "--", str(spec_path), str(out_dir)]
+    cmd.extend(str(a) for a in extra)
+    print(f"[{label}] {Path(blender).name} -> {out_dir}")
     proc = subprocess.run(cmd, capture_output=True, text=True)
 
     if verbose or proc.returncode != 0:
@@ -75,10 +81,22 @@ def render_views(spec_path, out_dir, verbose=False):
     if proc.returncode != 0:
         raise RuntimeError(f"Blender exited with code {proc.returncode}")
 
-    made = sorted(out_dir.glob("view_*.png"))
+    made = sorted(out_dir.glob(glob))
     if not made:
-        raise RuntimeError(f"Blender reported success but produced no views in {out_dir}")
+        raise RuntimeError(f"Blender reported success but produced nothing in {out_dir}")
     return made
+
+
+def render_views(spec_path, out_dir, verbose=False):
+    """Render top, front, side and three-quarter views with the camera path drawn."""
+    return _run_script(VIEWS_SCRIPT, "views", spec_path, out_dir, "view_*.png", verbose=verbose)
+
+
+def render_frames(spec_path, out_dir, count=5, verbose=False):
+    """Render `count` evenly spaced stills, first and last included."""
+    return _run_script(
+        FRAMES_SCRIPT, "frames", spec_path, out_dir, "t*.png", extra=(count,), verbose=verbose
+    )
 
 
 def render(spec_path, out_path, verbose=False):
