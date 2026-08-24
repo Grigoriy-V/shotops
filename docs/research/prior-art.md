@@ -2,6 +2,11 @@
 
 *Surveyed 2026-08-24.*
 
+Existing products in this space are an asset, not a threat. They are free
+evidence about which parts of the problem are real, and free engineering we do
+not have to repeat. This project has its own goals and its own route; the point
+of the survey is to move faster by knowing what has already been settled.
+
 ## The closest thing, and it got there first
 
 **[`wassermanproductions/blockout`](https://github.com/wassermanproductions/blockout)**
@@ -17,10 +22,12 @@ bundle rather than calling an API: reference video, depth pass, optional normal
 pass, stills, a prompt tailored per generator, a pre-wired ComfyUI workflow,
 machine-readable metadata, and a `.glb` Blender handoff with animated camera.
 
-**The uncomfortable part.** Its projects are, in its own words, a folder of
+**The part worth knowing.** Its projects are, in its own words, a folder of
 pretty-printed, stable-key-order JSON — diff it, branch it, review it. That is
-the shotops thesis, already implemented, by someone who thought of it
-independently. Worth stating plainly rather than discovering later.
+the shotops thesis, already implemented, by someone who reached it
+independently. Good news twice over: the idea survives contact with a second
+mind, and the format questions (stable key order, pretty-printing, what belongs
+in a project folder) already have a worked answer to borrow.
 
 **Where the two actually differ**, and it is not a small gap:
 

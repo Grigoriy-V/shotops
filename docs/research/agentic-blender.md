@@ -39,24 +39,54 @@ count (51, 69, 93 tools), verification, or headless operation.
 
 ## The two facts that decided the architecture here
 
-**MCP requires a GUI Blender session.** The add-on runs inside a live Blender,
-listening on `localhost:9876`; the MCP server is a separate process relaying to
-it. The community add-on **refuses to start under `blender -b`**, and the
-documented workaround on a headless machine is `xvfb-run` — a virtual display, not
-background mode. There are also reported timeouts on longer operations such as
-glTF export, with "use the headless CLI instead" as the advice.
+**The live-bridge design requires a GUI Blender session.** Verified in source,
+not inferred — `addon.py` in `ahujasid/blender-mcp`:
 
-For a pipeline whose whole point is `blender -b -P build_scene.py` in CI, on a
-render node, reproducibly, that is disqualifying — not because MCP is bad, but
-because it is built for a human sitting in front of the viewport.
+```python
+def start(self):
+    if bpy.app.background:
+        print("BlenderMCP: cannot start server in background mode (blender -b) - commands would never execute\n"
+              "BlenderMCP: run Blender with a GUI, or use a virtual display: xvfb-run -a blender")
+        return
+```
 
-**`execute_blender_code` is `exec()` with no sandbox.** Filed as
-[issue #207](https://github.com/ahujasid/blender-mcp/issues/207): arbitrary
-LLM-controlled Python, executed with the user's full privileges, in a process
-that has your project directory open. There is a `weak_sandbox.py`, and the name
-is honest. A separate [arbitrary file read](https://github.com/ahujasid/blender-mcp/issues/202)
-was filed against an asset-generation tool. Prompt injection through scene
+The refusal is honest engineering rather than an oversight. The add-on runs
+inside a live Blender listening on `localhost:9876`, and it needs Blender's own
+event loop to be ticking to pull queued commands off the socket. Under `-b` there
+is no loop, so commands would be accepted and never executed — failing loudly
+beats hanging. The suggested workaround, `xvfb-run`, is a *virtual display*: a
+GUI session with nobody watching, not background mode.
+
+For a pipeline whose whole point is `blender -b -P build_scene.py` on a render
+node, reproducibly, that rules it out — not because MCP is bad, but because this
+implementation is built for a human in front of the viewport.
+
+Worth separating two things that get conflated: **MCP the protocol does not
+require a viewport.** Nothing stops an MCP server from shelling out to
+`blender -b`, and `sandraschi/blender-mcp` advertises exactly that, with the live
+bridge as an option. What needs the GUI is the *live-bridge architecture* that
+the popular servers chose — because that architecture is what buys you an open
+scene to inspect and mutate interactively.
+
+**`execute_blender_code` is `exec()` with no restriction.** In the same file:
+
+```python
+namespace = {"bpy": bpy}
+exec(code, namespace)
+```
+
+[Issue #207](https://github.com/ahujasid/blender-mcp/issues/207) is **closed**,
+but the code above is what the repository contains as of this survey. The
+substantive point raised there stands: passing a bare namespace does not restrict
+anything, because Python injects full builtins when `__builtins__` is not set
+explicitly — so `import os`, `open(...)` and `subprocess` all work. A separate
+[arbitrary file read](https://github.com/ahujasid/blender-mcp/issues/202) was
+filed against an asset-generation tool. Prompt injection through scene
 descriptions and `.blend` contents is a live vector, not a theoretical one.
+
+*(Correction to an earlier draft of this note: there is no `weak_sandbox.py` in
+this repository. That detail came from a search summary and did not survive
+checking the file list.)*
 
 A spec-driven builder has a smaller blast radius by construction: the model emits
 JSON, a validator rejects it before Blender starts, and the only Python that ever
