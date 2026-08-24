@@ -17,6 +17,40 @@ sys.path.insert(0, str(ROOT / "src"))
 from ai_render import spec as spec_mod  # noqa: E402
 
 
+class Quat:
+    """Enough of mathutils.Quaternion to check camera-angle composition.
+
+    Real quaternion algebra, not a placeholder: the thing worth testing about
+    `orient()` is the multiplication order, and a stub that discarded it would
+    pass whatever the code did.
+    """
+
+    def __init__(self, value, angle=None):
+        if angle is None:
+            self.w, self.x, self.y, self.z = (float(c) for c in value)
+        else:  # axis-angle
+            ax, ay, az = value
+            length = math.sqrt(ax * ax + ay * ay + az * az) or 1.0
+            half = angle / 2.0
+            s = math.sin(half) / length
+            self.w, self.x, self.y, self.z = math.cos(half), ax * s, ay * s, az * s
+
+    def __matmul__(self, other):
+        a, b = self, other
+        return Quat((
+            a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+            a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+            a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+            a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+        ))
+
+    def dot(self, other):
+        return self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z
+
+    def parts(self):
+        return [self.w, self.x, self.y, self.z]
+
+
 def _load_build_scene():
     """Import blender/build_scene.py with bpy and mathutils stubbed out."""
     if "bpy" not in sys.modules:
@@ -28,7 +62,7 @@ def _load_build_scene():
 
         mathutils = types.ModuleType("mathutils")
         mathutils.Vector = lambda v: v
-        mathutils.Quaternion = lambda v: v
+        mathutils.Quaternion = Quat
         sys.modules["mathutils"] = mathutils
 
     sys.path.insert(0, str(ROOT / "blender"))
@@ -70,18 +104,56 @@ three = [
 ]
 check("picks the right segment", bs.sample(three, 2.0), [20.0])
 
+print("sample() -- smooth carries velocity through a key")
+
+
+def velocity(track, t, h=1e-4):
+    a, b = bs.sample(track, t - h), bs.sample(track, t + h)
+    return [(bv - av) / (2 * h) for av, bv in zip(a, b)]
+
+
+two = [{"t": 0.0, "value": [0.0, 0.0], "ease": "smooth"}, {"t": 2.0, "value": [10.0, 4.0]}]
+check("two keys are exactly linear", bs.sample(two, 0.5), [2.5, 1.0])
+
+# An even run of keys: nothing about it should vary in speed at all.
+even = [{"t": float(i), "value": [10.0 * i], "ease": "smooth"} for i in range(5)]
+check("hits every key", [bs.sample(even, float(i))[0] for i in range(5)], [0.0, 10.0, 20.0, 30.0, 40.0])
+check("even spacing stays even", round(bs.sample(even, 1.5)[0], 6), 15.0)
+
+# The failure this mode exists to fix: `ease` stops dead on the shared key.
+stops = [dict(k, ease="ease") for k in even]
+check("ease stalls at the key", velocity(stops, 2.0)[0] < 0.01, True)
+check("smooth does not stall", round(velocity(even, 2.0)[0], 6), 10.0)
+before, after = velocity(even, 2.0 - 0.3), velocity(even, 2.0 + 0.3)
+check("velocity is continuous across the key", round(before[0] - after[0], 6), 0.0)
+
+# Speed follows key spacing, which is how the move gets steered.
+uneven = [
+    {"t": 0.0, "value": [0.0], "ease": "smooth"},
+    {"t": 1.0, "value": [20.0], "ease": "smooth"},
+    {"t": 3.0, "value": [30.0], "ease": "smooth"},
+    {"t": 6.0, "value": [33.0]},
+]
+check("wide keys are slower than tight ones", velocity(uneven, 0.5)[0] > velocity(uneven, 4.5)[0], True)
+check("no stall at an uneven key", velocity(uneven, 1.0)[0] > 1.0, True)
+
 print("sample() -- degenerate input")
 check("zero-length segment", bs.sample([{"t": 1.0, "value": [5.0]}, {"t": 1.0, "value": [9.0]}], 1.0), [5.0])
 check("single key", bs.sample([{"t": 0.0, "value": [3.0]}], 7.0), [3.0])
 
 print("spec validation -- the demo scene")
-demo = spec_mod.load(ROOT / "scenes" / "demo_cube.json")
-check("demo duration", demo["duration"], 5.0)
+DEMO_SHOT = ROOT / "projects" / "demo" / "sequences" / "seq_010" / "sh_0010"
+DEMO_SCENE = DEMO_SHOT / "cube.json"
+demo, demo_target = spec_mod.load_target(DEMO_SCENE)
+check("demo duration comes from the shot", demo["duration"], 5.0)
 check("demo object count", len(demo["objects"]), 4)
+check("demo fps comes from the project", demo["fps"], 24)
 
 
 def expect_error(label, mutate):
-    scene = json.loads((ROOT / "scenes" / "demo_cube.json").read_text(encoding="utf-8"))
+    # Deep copy: these mutations reach into nested lists, and a shallow copy
+    # would quietly corrupt the shared spec for every later check.
+    scene = json.loads(json.dumps(demo))
     mutate(scene)
     try:
         spec_mod.validate(scene)
@@ -91,6 +163,97 @@ def expect_error(label, mutate):
     failures.append(f"{label}: expected a SpecError, got none")
     print(f"  FAIL {label}: no error raised")
 
+
+print("camera angles -- reading")
+cam = {"roll": -6.0, "animation": {"pan": [{"t": 0.0, "value": [0.0]}, {"t": 2.0, "value": [20.0]}]}}
+check("static angle", bs.angle(cam, "roll", 1.0), -6.0)
+check("absent angle is zero", bs.angle(cam, "tilt", 1.0), 0.0)
+check("animated angle beats static", bs.angle(cam, "pan", 1.0), 10.0)
+
+print("camera angles -- composition")
+_real_aim = bs.aim
+bs.aim = lambda loc, target: Quat((1.0, 0.0, 0.0, 0.0))  # identity, so only the offsets show
+check("no angles is identity", bs.orient([0, 0, 0], [0, 1, 0]).parts(), [1.0, 0.0, 0.0, 0.0])
+check(
+    "roll turns about the view axis",
+    bs.orient([0, 0, 0], [0, 1, 0], roll=90.0).parts(),
+    Quat((0.0, 0.0, 1.0), math.radians(90.0)).parts(),
+)
+check(
+    "zero is identical to absent",
+    bs.orient([0, 0, 0], [0, 1, 0], pan=0.0, tilt=0.0, roll=0.0).parts(),
+    bs.orient([0, 0, 0], [0, 1, 0]).parts(),
+)
+composed = bs.orient([0, 0, 0], [0, 1, 0], pan=30.0, tilt=15.0, roll=45.0)
+expected = (
+    Quat((0.0, 1.0, 0.0), math.radians(30.0))
+    @ Quat((1.0, 0.0, 0.0), math.radians(15.0))
+    @ Quat((0.0, 0.0, 1.0), math.radians(45.0))
+)
+check("order is pan, tilt, roll", composed.parts(), expected.parts())
+wrong_order = (
+    Quat((0.0, 0.0, 1.0), math.radians(45.0))
+    @ Quat((1.0, 0.0, 0.0), math.radians(15.0))
+    @ Quat((0.0, 1.0, 0.0), math.radians(30.0))
+)
+check(
+    "order actually matters (guards the check above)",
+    1.0 if abs(composed.dot(wrong_order)) < 0.999 else 0.0,
+    1.0,
+)
+bs.aim = _real_aim
+
+print("camera angles -- validation")
+expect_error("roll as a list", lambda s: s["camera"].update(roll=[5.0]))
+expect_error("roll as a string", lambda s: s["camera"].update(roll="45deg"))
+expect_error("pan track of the wrong width", lambda s: s["camera"].setdefault("animation", {}).update(
+    pan=[{"t": 0.0, "value": [0.0, 1.0]}]
+))
+
+print("project structure")
+from ai_render import project as project_mod  # noqa: E402
+
+check("shot scene resolves", project_mod.resolve(DEMO_SCENE).kind == "shot", True)
+check(
+    "identity comes from the path",
+    project_mod.resolve(DEMO_SCENE).out_parts == ("demo", "seq_010", "sh_0010", "cube"),
+    True,
+)
+check("shot directory resolves via shot.json", project_mod.resolve(DEMO_SHOT).scene == "cube", True)
+check(
+    "standalone scene keeps one segment",
+    project_mod.resolve(ROOT / "nowhere" / "loose.json").out_parts == ("loose",),
+    True,
+)
+check(
+    "asset path is recognised",
+    project_mod.resolve(ROOT / "projects" / "demo" / "assets" / "prop.json").kind == "asset",
+    True,
+)
+
+
+def expect_project_error(label, path):
+    try:
+        project_mod.resolve(path)
+    except project_mod.ProjectError as exc:
+        print(f"  ok   {label} -> {exc}")
+        return
+    failures.append(f"{label}: expected a ProjectError, got none")
+    print(f"  FAIL {label}: no error raised")
+
+
+expect_project_error("a level file is not a scene", DEMO_SHOT / "shot.json")
+expect_project_error("project file is not a scene", ROOT / "projects" / "demo" / "project.json")
+
+print("project structure -- inheritance")
+merged = project_mod.merge(
+    {"fps": 24, "render": {"stills": 8, "shadow": True}},
+    {"render": {"stills": 3}},
+)
+check("nested dicts merge", merged["render"] == {"stills": 3, "shadow": True}, True)
+check("untouched parent value survives", merged["fps"] == 24, True)
+replaced = project_mod.merge({"objects": [1, 2, 3]}, {"objects": [9]})
+check("lists replace rather than merge", replaced["objects"] == [9], True)
 
 print("spec validation -- rejects bad specs")
 expect_error("unknown object type", lambda s: s["objects"][1].update(type="dodecahedron"))

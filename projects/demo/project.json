@@ -1,0 +1,13 @@
+{
+  "fps": 24,
+  "resolution": [960, 540],
+  "render": {
+    "stills": 8
+  },
+  "generation": {
+    "reference_mode": "video",
+    "aspect_ratio": "16:9",
+    "resolution": "480p",
+    "model": "seedance-2-mini"
+  }
+}

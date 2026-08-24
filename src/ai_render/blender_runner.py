@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD_SCRIPT = ROOT / "blender" / "build_scene.py"
+VIEWS_SCRIPT = ROOT / "blender" / "render_views.py"
 
 _CANDIDATES = [
     # The portable build this project fetches for itself wins over any system
@@ -55,6 +56,29 @@ def find_blender():
         "Blender not found. Install it, or set AI_RENDER_BLENDER to the executable.\n"
         "  winget install --id BlenderFoundation.Blender -e"
     )
+
+
+def render_views(spec_path, out_dir, verbose=False):
+    """Render top, front, side and three-quarter views with the camera path drawn."""
+    blender = find_blender()
+    # Absolute on this side too, so the path in the log is the path on disk.
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    cmd = [blender, "-b", "-noaudio", "-P", str(VIEWS_SCRIPT), "--", str(spec_path), str(out_dir)]
+    print(f"[views] {Path(blender).name} -> {out_dir}")
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+
+    if verbose or proc.returncode != 0:
+        sys.stdout.write(proc.stdout)
+        sys.stderr.write(proc.stderr)
+    if proc.returncode != 0:
+        raise RuntimeError(f"Blender exited with code {proc.returncode}")
+
+    made = sorted(out_dir.glob("view_*.png"))
+    if not made:
+        raise RuntimeError(f"Blender reported success but produced no views in {out_dir}")
+    return made
 
 
 def render(spec_path, out_path, verbose=False):

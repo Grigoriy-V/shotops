@@ -16,7 +16,7 @@ material, lighting and colour changed — which is the whole claim, and the two
 clips above are the form of it that can actually be falsified.
 
 Left is rendered locally and costs nothing. The only authored input is
-[`scenes/demo_room.json`](scenes/demo_room.json): 127 lines holding ten
+[`projects/demo/sequences/seq_010/sh_0020/room.json`](projects/demo/sequences/seq_010/sh_0020/room.json): 127 lines holding ten
 primitives, a 32mm camera that dollies from 13.7m to 8.4m while dropping from
 6.0m to 1.8m, and a prompt describing surfaces. 5s, 480p.
 
@@ -82,30 +82,10 @@ capability costs the rest of the model:
 - **No bisect.** A shot that regressed over twelve publishes is debugged by
   opening all twelve.
 
-The generated clip is the visible half. The question underneath is older and
-bigger: **can a film production pipeline be versioned the way software is?**
-
-A studio pipeline already has structure — sequences, shots, tasks, publishes.
-What it does not have is history you can read. The unit of work is a binary DCC
-scene, so "version control" degrades to publishing a new file with a comment and
-a preview link. You can see that `v012` exists and that it looks different from
-`v011`. You cannot see *what changed*. That single missing capability costs the
-rest of the model:
-
-- **No diff.** "The camera is wrong now" starts a conversation, not a lookup.
-- **No blame.** Nobody can say which change introduced the problem, or why it
-  was made.
-- **No revert.** Rolling back means restoring a whole file, losing every
-  unrelated change that rode along in it.
-- **No branch, no merge.** Two looks cannot exist at once, and two artists
-  cannot touch one shot without one of them waiting.
-- **No bisect.** A shot that regressed over twelve publishes is debugged by
-  opening all twelve.
-
 Software solved this by making the source text and treating everything else as
 derived. That is the whole trick, and it transfers. **When the scene is a config
-file, the shot inherits git.** `scenes/*.json` is source: camera path, blocking,
-timing, look prompt. "Move the camera 20cm left" is a one-line patch with an
+file, the shot inherits git.** A scene spec under `projects/` is source: camera
+path, blocking, timing, look prompt. "Move the camera 20cm left" is a one-line patch with an
 author and a reason attached. Two lighting directions are two branches. The
 history of a shot is its commit log, and it is readable by a person who was not
 in the room.
@@ -172,8 +152,8 @@ scene](docs/design/feedback-loop.md).
 ## How it fits together
 
 ```
-scenes/*.json  ──▶  Blender (headless)  ──▶  out/<name>/preview.mp4
-                                             out/<name>/frames/*.png
+projects/**/<scene>.json ─▶ Blender (headless) ─▶ out/<project>/<seq>/<shot>/<scene>/<take>/preview.mp4
+                                                   .../frames/*.png
                                                     │
                                      Supabase Storage (signed URL, then deleted)
                                                     │
@@ -181,7 +161,7 @@ scenes/*.json  ──▶  Blender (headless)  ──▶  out/<name>/preview.mp4
                                    Seedance via PiAPI (omni_reference)
                                                     │
                                                     ▼
-                                            out/<name>/final.mp4
+                                            .../<generation>/final.mp4
 ```
 
 The upload hop is not optional: Seedance takes reference **videos** by URL only.
@@ -191,7 +171,7 @@ deleted as soon as the job finishes — including when it fails.
 
 ## Why this shape
 
-**The scene spec is the product.** `scenes/*.json` is what the agent actually
+**The scene spec is the product.** The scene spec is what the agent actually
 writes: declarative, diffable, editable field by field. "Move the camera 20cm
 left" is a one-line patch, not a regeneration. Blender, the video model, and any
 future viewer are all just consumers of that file.
@@ -265,7 +245,7 @@ Defaults to **`seedance-2-mini`**, the iteration tier. Three ways to change it,
 highest precedence first:
 
 ```bash
-python -m ai_render generate scenes/demo_room.json --model seedance-2
+python -m ai_render generate projects/demo/sequences/seq_010/sh_0020/room.json --model seedance-2
 ```
 
 ```jsonc
@@ -299,7 +279,7 @@ Reports which credentials are set without ever printing their values.
 ## Use
 
 ```bash
-$env:PYTHONPATH="src"; python -m ai_render all scenes/demo_cube.json
+$env:PYTHONPATH="src"; python -m ai_render all projects/demo/sequences/seq_010/sh_0010/cube.json
 ```
 
 | Command | Does |
@@ -311,15 +291,54 @@ $env:PYTHONPATH="src"; python -m ai_render all scenes/demo_cube.json
 | `takes <scene>` | list takes and their generations |
 | `styleframe <scene>` | restyle a blockout frame into a look reference |
 | `compare <scene>` | contact sheet, blockout vs result at matched times |
+| `views <scene>` | top/front/side/3-quarter of the scene, camera path drawn |
+| `sheet <scene>` | contact sheet of a take's stills |
 | `extract <video>` | pull stills from any clip for comparison |
 | `fetch <task-id>` | re-download a finished task without paying again |
+
+### Project, sequence, shot, scene
+
+A scene does not carry its identity; its path does.
+
+```
+projects/nyc/
+  project.json                  <- fps, resolution, aspect: defaults for everything below
+  assets/                       <- work that belongs to no sequence
+  sequences/seq_010/
+    sequence.json
+    sh_0010/
+      shot.json                 <- duration, and which scene the shot currently is
+      brief.md                  <- the authored intent
+      street_a.json             <- a scene: one way of staging the shot
+      street_b.json             <- another, in parallel
+```
+
+Each level holds only what differs at that level; a scene inherits the rest.
+Resolution order, most specific wins: scene → shot → sequence → project.
+
+Several scenes in one shot are **parallel variants**, never segments: a shot is
+one of its scenes, never an assembly of them. Point a command at a shot directory
+and it renders the scene `shot.json` selects.
+
+Numbering goes up in tens — `sh_0010`, `sh_0020` — so inserting a shot later is a
+naming problem that is already solved rather than a renumbering that invalidates
+every path in `out/`.
+
+### Artifacts stay with the shot
+
+`views` and `sheet` write into `<shot>/artifacts/`, not into `out/`. That is a
+deliberate exception to "outputs are derived, so they are disposable": these are
+not outputs, they are the record of how a decision was reached — the view that
+showed the wall was empty, the sheet that proved the camera held. They are small,
+stamped, and committed. An image that exists only in a chat window is lost to
+the next session.
 
 ### Output layout
 
 One task, one directory. Nothing is ever overwritten.
 
 ```
-out/demo_room/
+out/nyc/seq_010/sh_0010/street_a/         <- mirrors the scene's place in the project
   20260824-153012/                        <- a take: one blockout render
     scene.json                            <- the exact spec that produced it
     preview.mp4
@@ -340,7 +359,7 @@ reason the next attempt is different.
 ### Comparing a result against the blockout
 
 ```bash
-python -m ai_render generate scenes/demo_room.json --resolution 480p --extract
+python -m ai_render generate projects/demo/sequences/seq_010/sh_0020/room.json --resolution 480p --extract
 ```
 
 `--extract` pulls 8 stills from the result into `final_frames/`, matching the 8
@@ -362,7 +381,6 @@ without Blender installed.
 
 ```jsonc
 {
-  "name": "demo_cube",
   "fps": 24,
   "duration": 5.0,              // seconds
   "resolution": [960, 540],     // blockout only; final resolution is in `generation`
@@ -400,9 +418,26 @@ without Blender installed.
 }
 ```
 
-Animatable channels: `location`, `rotation`, `scale`, plus `look_at` and `lens`
-on the camera. Easing per keyframe: `ease` (smoothstep, default), `linear`,
-`in`, `out` — it governs the segment *starting* at that key.
+Animatable channels: `location`, `rotation`, `scale`, plus `look_at`, `lens`,
+`roll`, `pan` and `tilt` on the camera.
+
+`look_at` aims the camera; the three angles rotate it about its own axes
+afterwards, in degrees. `roll` banks it — without that a flight reads as a drone
+holding the horizon level. `pan` and `tilt` swing the aim off the target, which
+is how a subject gets to sit anywhere but dead centre. All three default to 0,
+so a scene that omits them renders exactly as before.
+
+Easing is set per keyframe and governs the segment *starting* at that key:
+`ease` (smoothstep, the default), `linear`, `in`, `out`, `smooth`.
+
+`smooth` is the one to reach for on a move that should not stop. The other four
+shape one segment in isolation and know nothing about their neighbours — `ease`
+in particular has zero velocity at *both* ends, so a run of eased keys arrives
+and halts at every one of them, and `linear` turns a corner at each key instead
+of curving through it. `smooth` takes its tangent at a key from the keys either
+side, so velocity carries through: continuous speed, a curved path, and speed
+still steered by how far apart the keys are. With only two keys it is exactly
+linear.
 
 **Write the prompt about materials and light, not about layout.** The provider
 prepends the reference contract itself. Everything spatial — blocking, framing,
@@ -455,7 +490,7 @@ other. So it is made by **restyling the blockout's own frame**, not by generatin
 a picture from text:
 
 ```bash
-python -m ai_render styleframe scenes/demo_room.json
+python -m ai_render styleframe projects/demo/sequences/seq_010/sh_0020/room.json
 ```
 
 That sends `frames/frame_01_.png` to GPT Image 2's edit endpoint with an

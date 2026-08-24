@@ -1,16 +1,9 @@
 {
-  "name": "demo_room",
-  "fps": 24,
-  "duration": 5.0,
-  "resolution": [960, 540],
-
   "render": {
     "background": [0.02, 0.02, 0.02],
     "cavity": true,
-    "shadow": true,
-    "stills": 8
+    "shadow": true
   },
-
   "objects": [
     {
       "name": "floor",
@@ -52,7 +45,6 @@
       "location": [-8.1, 0, 4.5],
       "color": [0.62, 0.62, 0.62]
     },
-
     {
       "name": "wall_right_lower",
       "type": "cube",
@@ -69,7 +61,6 @@
       "location": [8.1, 0, 7.75],
       "color": [0.62, 0.62, 0.62]
     },
-
     {
       "name": "column_a",
       "type": "cylinder",
@@ -86,7 +77,6 @@
       "location": [4.0, 7.0, 4.5],
       "color": [0.78, 0.78, 0.78]
     },
-
     {
       "name": "hero",
       "type": "cube",
@@ -95,33 +85,48 @@
       "color": [0.14, 0.14, 0.14],
       "animation": {
         "rotation": [
-          { "t": 0.0, "value": [0, 0, 0], "ease": "ease" },
-          { "t": 5.0, "value": [0, 0, 120] }
+          {
+            "t": 0.0,
+            "value": [0, 0, 0],
+            "ease": "ease"
+          },
+          {
+            "t": 5.0,
+            "value": [0, 0, 120]
+          }
         ]
       }
     }
   ],
-
   "camera": {
     "lens": 32.0,
     "sensor_width": 36.0,
     "animation": {
       "location": [
-        { "t": 0.0, "value": [6.5, -10.5, 6.0], "ease": "ease" },
-        { "t": 5.0, "value": [2.5, -8.0, 1.8] }
+        {
+          "t": 0.0,
+          "value": [6.5, -10.5, 6.0],
+          "ease": "ease"
+        },
+        {
+          "t": 5.0,
+          "value": [2.5, -8.0, 1.8]
+        }
       ],
       "look_at": [
-        { "t": 0.0, "value": [0, 0, 1.25], "ease": "ease" },
-        { "t": 5.0, "value": [0, 0, 1.25] }
+        {
+          "t": 0.0,
+          "value": [0, 0, 1.25],
+          "ease": "ease"
+        },
+        {
+          "t": 5.0,
+          "value": [0, 0, 1.25]
+        }
       ]
     }
   },
-
   "generation": {
-    "prompt": "Photorealistic live-action footage, shot on 35mm anamorphic. The dark block is polished black granite with crisp bevelled edges and faint pale mineral veining. The two round columns are raw board-formed concrete with visible timber grain. The walls are pale lime plaster, slightly chalky. The floor is worn polished concrete with soft broad reflections. Late-afternoon sunlight rakes in through the high clerestory slot on the right, warm and directional, with soft volumetric haze and floating dust motes. Deep shadows, shallow depth of field, subtle film grain.",
-    "reference_mode": "video",
-    "duration": 5,
-    "resolution": "720p",
-    "aspect_ratio": "16:9"
+    "prompt": "Photorealistic live-action footage, shot on 35mm anamorphic. The dark block is polished black granite with crisp bevelled edges and faint pale mineral veining. The two round columns are raw board-formed concrete with visible timber grain. The walls are pale lime plaster, slightly chalky. The floor is worn polished concrete with soft broad reflections. Late-afternoon sunlight rakes in through the high clerestory slot on the right, warm and directional, with soft volumetric haze and floating dust motes. Deep shadows, shallow depth of field, subtle film grain."
   }
 }

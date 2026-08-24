@@ -8,7 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import blender_runner, compare, env, runs, spec as spec_mod, styleframe
+from . import blender_runner, compare, env, project, runs, spec as spec_mod, styleframe
 from .providers import get_provider
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,8 +16,12 @@ EXTRACT_SCRIPT = ROOT / "blender" / "extract_frames.py"
 
 
 def _load(scene_path):
-    scene = spec_mod.load(scene_path)
-    return scene, spec_mod.scene_name(scene, scene_path)
+    """Resolve a scene path into its spec and its place in the hierarchy.
+
+    Returns `(spec, target)`. `target.out_parts` is the identity `out/` mirrors;
+    `target.label` is what to print.
+    """
+    return spec_mod.load_target(scene_path)
 
 
 def _rel(path):
@@ -28,31 +32,93 @@ def _rel(path):
 
 
 def cmd_check(args):
-    scene, name = _load(args.scene)
+    scene, target = _load(args.scene)
     frames = round(scene.get("duration", 5.0) * scene.get("fps", 24))
-    print(f"ok -- {name}: {len(scene.get('objects', []))} objects, {frames} frames")
+    print(f"ok -- {target.label}: {len(scene.get('objects', []))} objects, {frames} frames")
+    if scene.get("role") == "asset":
+        print("note: role 'asset' -- scratch work, not a candidate for the shot")
     if not scene.get("generation"):
         print("note: no 'generation' block, so only `render` will work")
     return 0
 
 
 def cmd_render(args):
-    scene, name = _load(args.scene)
-    take = runs.new_take(name, spec=scene)
-    blender_runner.render(args.scene, take / "preview.mp4", verbose=args.verbose)
+    scene, target = _load(args.scene)
+    take = runs.new_take(target.out_parts, spec=scene)
+    # The merged spec goes to Blender, not the file on disk: inherited defaults
+    # are part of the scene, and the snapshot in the take must be what rendered.
+    blender_runner.render(take / "scene.json", take / "preview.mp4", verbose=args.verbose)
     print(f"[render] take {_rel(take)}")
     return 0
 
 
+def cmd_views(args):
+    """Render the scene from outside the shot, and keep the result with the shot."""
+    import json
+    import tempfile
+
+    scene, target = _load(args.scene)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    out_dir = target.artifacts_dir / f"{stamp}_views"
+
+    # The merged spec is what describes the scene; the file on disk is only its
+    # most specific layer.
+    with tempfile.TemporaryDirectory() as tmp:
+        merged = Path(tmp) / "scene.json"
+        merged.write_text(json.dumps(scene, indent=2, ensure_ascii=False), encoding="utf-8")
+        made = blender_runner.render_views(merged, tmp_views := out_dir, verbose=args.verbose)
+        sheet = compare.grid(made, out_dir.with_suffix(".jpg"), columns=2, labelled=True)
+
+    # Only the sheet is kept. The individual PNGs are four times its size, live
+    # in a directory that gets committed, and are three seconds away from being
+    # regenerated -- derived and reproducible, so not worth storing.
+    for png in tmp_views.glob("view_*.png"):
+        png.unlink()
+    tmp_views.rmdir()
+
+    print(f"[views] {len(made)} views -> {_rel(sheet)}")
+    return 0
+
+
+def cmd_sheet(args):
+    """Keep a take's record with the shot: the stills sheet and the blockout itself.
+
+    The video is the thing actually being judged, so it belongs in the record
+    too. It is small -- a 10s grey blockout is under a megabyte -- and without it
+    the sheet is eight frames with no motion between them.
+    """
+    import shutil
+
+    _, target = _load(args.scene)
+    take = runs.resolve_take(target.out_parts, args.take)
+    frames = sorted((take / "frames").glob("*.png"))
+    if not frames:
+        print(f"error: no stills in {_rel(take / 'frames')}", file=sys.stderr)
+        return 2
+
+    target.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    sheet = compare.grid(
+        frames, target.artifacts_dir / f"{take.name}_frames.jpg", columns=4, labelled=True
+    )
+    print(f"[sheet] {len(frames)} frames -> {_rel(sheet)}")
+
+    preview = take / "preview.mp4"
+    if preview.exists():
+        kept = target.artifacts_dir / f"{take.name}_blockout.mp4"
+        shutil.copyfile(preview, kept)
+        print(f"[sheet] blockout -> {_rel(kept)} ({kept.stat().st_size / 1e6:.1f} MB)")
+    return 0
+
+
 def cmd_generate(args):
-    scene, name = _load(args.scene)
+    scene, target = _load(args.scene)
     generation = scene.get("generation")
     if not generation:
         print("error: scene has no 'generation' block", file=sys.stderr)
         return 2
 
     # `all` has no --take: it always generates from the take it just rendered.
-    take = runs.resolve_take(name, getattr(args, "take", None))
+    take = runs.resolve_take(target.out_parts, getattr(args, "take", None))
     preview = take / "preview.mp4"
     if not preview.exists():
         print(f"error: no blockout at {_rel(preview)} -- run `render` first", file=sys.stderr)
@@ -79,7 +145,7 @@ def cmd_generate(args):
 
     runs.write_manifest(
         out_dir,
-        scene=name,
+        scene=target.label,
         take=take.name,
         provider=provider.name,
         model=resolved_model,
@@ -111,9 +177,9 @@ def cmd_generate(args):
 
 
 def cmd_styleframe(args):
-    scene, name = _load(args.scene)
+    scene, target = _load(args.scene)
     generation = scene.get("generation") or {}
-    take = runs.resolve_take(name, args.take)
+    take = runs.resolve_take(target.out_parts, args.take)
 
     prompt = args.prompt or (generation.get("style_prompt") or generation.get("prompt"))
     if not prompt:
@@ -140,8 +206,8 @@ def cmd_styleframe(args):
 
 
 def cmd_compare(args):
-    _, name = _load(args.scene)
-    take = runs.resolve_take(name, args.take)
+    _, target = _load(args.scene)
+    take = runs.resolve_take(target.out_parts, args.take)
     generations = runs.list_generations(take)
     if not generations:
         print(f"error: no generations in {_rel(take)}", file=sys.stderr)
@@ -166,10 +232,10 @@ def cmd_all(args):
 
 
 def cmd_takes(args):
-    _, name = _load(args.scene)
-    takes = runs.list_takes(name)
+    _, target = _load(args.scene)
+    takes = runs.list_takes(target.out_parts)
     if not takes:
-        print(f"no takes for {name} yet")
+        print(f"no takes for {target.label} yet")
         return 0
     for take in takes:
         generations = runs.list_generations(take)
@@ -231,11 +297,17 @@ def main(argv=None):
         ("generate", cmd_generate, "blockout -> final.mp4 via the video model"),
         ("all", cmd_all, "render, then generate"),
         ("takes", cmd_takes, "list takes and generations for a scene"),
+        ("views", cmd_views, "top/front/side/3-quarter of the scene, camera path drawn"),
+        ("sheet", cmd_sheet, "contact sheet of a take's stills, kept with the shot"),
         ("styleframe", cmd_styleframe, "GPT Image 2 -> <take>/styleframe.png"),
         ("compare", cmd_compare, "side-by-side sheet: blockout vs result"),
     ]:
         p = sub.add_parser(name, help=help_text)
-        p.add_argument("scene", help="path to a scene .json")
+        p.add_argument(
+            "scene",
+            help="path to a scene .json, or to a shot directory "
+            "(which renders the scene its shot.json selects)",
+        )
         if name in ("generate", "all"):
             p.add_argument("--provider", default="piapi", help="video provider (default: piapi)")
             p.add_argument(
@@ -256,7 +328,7 @@ def main(argv=None):
                 help="also pull N stills from the result and build a comparison sheet",
             )
             p.add_argument("--style", help="style reference image (default: <take>/styleframe.png)")
-        if name in ("generate", "styleframe", "compare"):
+        if name in ("generate", "styleframe", "compare", "sheet"):
             p.add_argument("--take", help="use a specific take (default: the newest)")
         if name == "styleframe":
             p.add_argument("--prompt", help="override the scene's look prompt")
@@ -294,6 +366,9 @@ def main(argv=None):
         return args.func(args)
     except spec_mod.SpecError as exc:
         print(f"spec error -- {exc}", file=sys.stderr)
+        return 2
+    except project.ProjectError as exc:
+        print(f"path error -- {exc}", file=sys.stderr)
         return 2
     except (RuntimeError, ValueError) as exc:
         print(f"error -- {exc}", file=sys.stderr)

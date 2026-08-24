@@ -4,7 +4,9 @@
 # Portable Blender, ~890 MB.
 .tools/
 
-# Renders, generations, manifests -- all reproducible from scenes/.
+# Renders, generations, manifests -- all reproducible from projects/.
+# Note the exception: <shot>/artifacts/ is committed on purpose. Those are the
+# record of how a shot got decided, not an output.
 out/
 
 __pycache__/

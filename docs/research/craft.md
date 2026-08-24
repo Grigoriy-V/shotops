@@ -6,8 +6,8 @@
 
 In ordinary AI video the prompt carries everything, so guides teach you to write
 camera language into it — "dolly zoom", "low angle", "orbit". Here the camera is
-**geometry, not vocabulary.** It lives in `scenes/*.json` and arrives as a
-reference clip.
+**geometry, not vocabulary.** It lives in the scene spec under `projects/` and
+arrives as a reference clip.
 
 That relocates the craft rather than removing it:
 

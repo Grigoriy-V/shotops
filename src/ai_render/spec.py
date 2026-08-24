@@ -12,9 +12,21 @@ import json
 from pathlib import Path
 
 KNOWN_TYPES = {"cube", "plane", "sphere", "cylinder", "cone", "torus"}
-KNOWN_EASE = {"linear", "ease", "in", "out"}
+# "smooth" is the only one that looks past its own segment: it carries velocity
+# through the key instead of stopping on it. A continuous move wants it.
+KNOWN_EASE = {"linear", "ease", "in", "out", "smooth"}
 KNOWN_REFERENCE_MODES = {"video", "frames", "first"}
-CHANNEL_WIDTH = {"location": 3, "rotation": 3, "scale": 3, "look_at": 3, "lens": 1}
+KNOWN_ROLES = {"variant", "asset"}
+
+# Camera angles sit on top of the aim rather than replacing it: `look_at` still
+# points the camera, and roll/pan/tilt rotate it about its own axes afterwards.
+# Width 1 each, on purpose -- most shots animate roll alone, and a one-number
+# channel is a one-line diff.
+CAMERA_ANGLES = ("roll", "pan", "tilt")
+CHANNEL_WIDTH = {
+    "location": 3, "rotation": 3, "scale": 3, "look_at": 3,
+    "lens": 1, "roll": 1, "pan": 1, "tilt": 1,
+}
 
 
 class SpecError(ValueError):
@@ -100,12 +112,21 @@ def validate(spec):
         if "animation" in obj:
             _check_animation(f"{where}.animation", obj["animation"], duration)
 
+    role = spec.get("role", "variant")
+    if role not in KNOWN_ROLES:
+        _fail("role", f"unknown role {role!r} (known: {', '.join(sorted(KNOWN_ROLES))})")
+
     camera = spec.get("camera")
     if not isinstance(camera, dict):
         _fail("camera", "a scene needs a camera object")
     for channel in ("location", "look_at"):
         if channel in camera:
             _check_vec(f"camera.{channel}", camera[channel], 3)
+    for channel in CAMERA_ANGLES:
+        if channel in camera:
+            value = camera[channel]
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                _fail(f"camera.{channel}", f"must be a number of degrees, got {value!r}")
     if "animation" in camera:
         _check_animation("camera.animation", camera["animation"], duration)
     has_loc = "location" in camera or "location" in (camera.get("animation") or {})
@@ -155,6 +176,21 @@ def load(path):
         return validate(raw)
     except SpecError as exc:
         raise SpecError(f"{path} -> {exc}") from None
+
+
+def load_target(path):
+    """Load a scene with its project/sequence/shot defaults applied.
+
+    Returns `(spec, target)`. This is what the CLI uses; `load` stays for a bare
+    file with no hierarchy above it.
+    """
+    from . import project
+
+    merged, target = project.load_spec(path)
+    try:
+        return validate(merged), target
+    except SpecError as exc:
+        raise SpecError(f"{target.scene_path} -> {exc}") from None
 
 
 def scene_name(spec, path):

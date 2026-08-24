@@ -1,6 +1,6 @@
 """Print the exact prompts that would be sent, without calling anything.
 
-    python tools/show_prompts.py scenes/demo_room.json
+    python tools/show_prompts.py projects/demo/sequences/seq_010/sh_0020/room.json
 
 Both prompts are assembled from a scene's look text plus a fixed contract, and
 neither is visible in the scene file. Being able to read them before paying is
@@ -16,8 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ai_render import spec as spec_mod, styleframe  # noqa: E402
 from ai_render.providers.base import build_reference_prompt  # noqa: E402
 
-scene_path = sys.argv[1] if len(sys.argv) > 1 else "scenes/demo_room.json"
-scene = spec_mod.load(scene_path)
+scene_path = sys.argv[1] if len(sys.argv) > 1 else "projects/demo/sequences/seq_010/sh_0020/room.json"
+# load_target, not load: most generation settings now live on the project or the
+# shot, and reading the scene file alone reports a generation block that is empty
+# -- which is exactly the thing this tool exists to make visible.
+scene, _target = spec_mod.load_target(scene_path)
 generation = scene.get("generation") or {}
 look = generation.get("prompt", "")
 
