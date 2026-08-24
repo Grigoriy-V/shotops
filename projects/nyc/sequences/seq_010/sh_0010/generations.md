@@ -139,7 +139,7 @@ cars survive close range before paying for a full ten.
 | Task | `711402f5-3ee9-43af-811d-9bd3fa5aa5ac` |
 | Model | `seedance-2-fast`, 480p, 16:9, **4 s** |
 | `@video1` | the 4 s trim of `preview/..._64dd03_preview_v003.mp4` |
-| `@image1..3` | three frames from a released animated feature, as look references |
+| `@image1..3` | `styleframes/lookref_a.png`, `_b`, `_c` — three frames from a released animated feature, as look references. Which local file was which `@image` is not recoverable from the log. |
 | Result | `render/..._64dd03_render_v002_4s.mp4`, 864×496, 97 frames |
 | Compared | `artifacts/..._64dd03_sheet_v007_vs_render_v002.jpg` |
 | Cost | 3,840,000 points |

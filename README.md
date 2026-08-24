@@ -5,111 +5,80 @@ file, Blender renders a grey blockout from it, and a video model turns that
 blockout into the finished shot — so the shot has a diff, a history and a
 revert, the way software does.
 
-## The first artifact
+## The artifact
 
-| in — Blender blockout | out — Seedance 2 mini |
+| in — Blender blockout | out — Seedance 2 |
 | --- | --- |
-| ![blockout](docs/blockout.gif) | ![result](docs/final.gif) |
+| ![blockout](docs/nyc-blockout.gif) | ![result](docs/nyc-result.gif) |
 
-Same dolly, same silhouette, same screen position, same raking light slot. Only
-material, lighting and colour changed — which is the whole claim, and the two
-clips above are the form of it that can actually be falsified.
+Ten seconds. A 104-object street built from primitives, and a 20mm camera that
+runs 112 m down a dead end at 80 km/h, weaves twice past two cars at 0.95 m,
+climbs a wall and crests a roof.
 
 Left is rendered locally and costs nothing. The only authored input is
-[`projects/demo/sequences/seq_010/sh_0020/room.json`](projects/demo/sequences/seq_010/sh_0020/room.json): 127 lines holding ten
-primitives, a 32mm camera that dollies from 13.7m to 8.4m while dropping from
-6.0m to 1.8m, and a prompt describing surfaces. 5s, 480p.
+[`street_a.json`](projects/nyc/sequences/seq_010/sh_0010/street_a.json) — flat
+grey boxes, cylinders and planes, and a camera with keyframes. Right came back
+from the video model with the move, the timing and the staging intact.
 
-Full quality, not palette-reduced: [`blockout.mp4`](docs/blockout.mp4) (237 KB),
-[`final.mp4`](docs/final.mp4) (1.3 MB).
+Look at what is above the roof line at the end. There is no bay, no bridge and
+no skyline anywhere in the geometry — the sky is empty and the camera is aimed
+at nothing. All of it came from the prompt and held for the whole reveal. **A
+backdrop that only appears at the end of a move does not have to be built.**
+
+Full quality, not palette-reduced:
+[blockout](projects/nyc/sequences/seq_010/sh_0010/preview/seq_010_sh_0010_street_a_64dd03_preview_v003.mp4) (859 KB),
+[result](projects/nyc/sequences/seq_010/sh_0010/render/seq_010_sh_0010_street_a_64dd03_render_v003.mp4) (3.8 MB).
+Frame-by-frame against the blockout at matched times:
+[contact sheet](projects/nyc/sequences/seq_010/sh_0010/artifacts/seq_010_sh_0010_street_a_64dd03_sheet_v008_vs_render_v003.jpg).
 
 ### The second reference
 
-<table>
-<tr>
-<td width="42%"><img src="docs/styleframe.jpg" alt="style still" /></td>
-<td valign="top">
+The blockout owns motion, framing and where things are. It is told to own
+nothing else, which leaves colour, light and material owned by nobody — so a
+second reference takes them.
 
-Colour and light do not come from the prompt alone. A **style still** carries
-them — and it is made by restyling the blockout's own first frame, so the camera,
-the framing and the objects are already identical.
+![look references](docs/nyc-lookrefs.jpg)
 
-That keeps the two references from arguing: the blockout owns everything
-spatial, the still owns everything about look. A picture generated from text
-would invent its own composition and pull against the blockout instead.
+Three images, and **none of them is this street.** That is the point. The
+obvious approach is to restyle the blockout's own first frame, so the two
+references agree by construction; it contains a trap, and the trap cost a
+generation. The still gets made before the dressing is settled, and then
+contradicts it — two cars added to the road afterwards came back as raw white
+boxes, because the look reference said the road was empty and the look reference
+is what the model takes material from. References carrying only palette and
+render style have nothing to disagree with.
 
-</td>
-</tr>
-</table>
+Which needs saying in the prompt as well: the video is a guide for movement and
+composition only, and appearance comes solely from the images. Without that
+line, the model treats flat grey scaffolding as art direction.
 
-## The second shot, and the first honest failure
+*The three above are frames from a released animated feature — a look probe for
+an R&D run, not a house style. They live in the shot as
+[`styleframes/lookref_a..c.png`](projects/nyc/sequences/seq_010/sh_0010/styleframes).*
 
-*2026-08-25.* A harder test: ten seconds instead of five, a 48-object street
-built from primitives, and a 20mm camera that runs 112 m down a dead-end at
-80 km/h, weaves twice, climbs a wall and crests a roof. Blockout on top, result
-below, at matched times.
+### What the cars settled
 
-![blockout against result](projects/nyc/sequences/seq_010/sh_0010/artifacts/seq_010_sh_0010_street_a_6de41e_sheet_v005_vs_render_v001.jpg)
+The two cars the camera threads at 0.95 m are the hardest thing in the shot, and
+they are what fixed it. Each was one cube; each is now eight primitives — lower
+body, greenhouse set back from centre, raked windscreen, steeper rear screen,
+four wheels on their sides — inside exactly the same footprint. They come back
+as a yellow taxi and a dark saloon, with tail lights and number plates.
 
-**What it settled.** Above the roof line the geometry is *empty* — there is no
-bay, no bridge, no sunset, no distant skyline anywhere in the scene. All four
-came from the prompt and stayed put for the whole reveal. A backdrop that only
-appears at the end of a move does not have to be built.
+**A primitive only has to look like its object at the distance it is seen from.**
+Distance buys inference: a box in a row along a kerb reads as a parked car
+because the street says so. Proximity spends it. Detail belongs where the camera
+goes close, and nowhere else.
 
-**What it broke.** From roughly 20% to 40% two raw white boxes sit in the road,
-untextured, while the buildings and kerbs around them are fully rendered. They
-are the two cars standing out in the traffic lane — the closest geometry in the
-shot, passed at 0.89 m to sell the speed.
-
-The cause is not that a cube is a poor car. It is that **the two references were
-handed contradictory accounts of the same surface**: the blockout said *there are
-objects standing here*, the style still said *the road is empty*, and the style
-still is what the model was told to take material from. There was no material for
-a thing the look reference does not contain. Proximity is the other half — the
-same cubes read as parked cars perfectly well at twenty metres along the kerb,
-where the street supplies the answer; at under a metre, filling a third of frame,
-there is no context left and nothing in a 1.9 × 4.6 m box to infer from.
-
-Which is the useful shape of the finding, because it is a rule rather than a
-verdict: **a primitive only has to look like its object at the distance it is
-seen from — and the style reference has to contain that object at all.**
-
-Full account with the provider log in
-[`generations.md`](projects/nyc/sequences/seq_010/sh_0010/generations.md); what
-building the blockout taught is in
-[`notes.md`](projects/nyc/sequences/seq_010/sh_0010/notes.md).
-
-## The same shot, fixed
-
-*2026-08-25.* Two changes to the scene — each car rebuilt from eight primitives
-instead of one cube, and given a colour the prompt is allowed to name — and one
-change to the references: **no style still at all.** In its place, three
-unrelated images carrying nothing but palette and render style.
-
-![blockout against result](projects/nyc/sequences/seq_010/sh_0010/artifacts/seq_010_sh_0010_street_a_64dd03_sheet_v008_vs_render_v003.jpg)
-
-The two cars that came back as white boxes are now a yellow taxi and a dark
-saloon, fully rendered at the 0.95 m pass, and the rooftop reveal still invents
-its bay, bridge and skyline out of an empty sky.
-
-Dropping the style still is the part that generalises. Restyling the blockout's
-own frame sounds right and contains a trap: the still gets made before the
-dressing is finished, and then contradicts it — which is exactly how the boxes
-were lost. References that describe only the *look* cannot disagree with the
-blockout about what is standing in the road, because they are not describing
-that road.
-
-The other finding cost nothing and was not expected. The cars are authored red;
-they came back yellow and near-black. **Colour in a blockout is a marker, not a
+And the cars are authored *red*. They came back yellow and near-black, because
+the look references decided. **Colour in a blockout is a marker, not a
 specification** — it says *there is one object here and this is where it ends*,
-so the prompt has something to point at, and the look reference decides what it
-is finally painted. The run that did *not* tell the model to take appearance
-from the images kept the red and washed the whole frame in it.
+so the prompt has something to point at. The run that did not release the model
+from the marker kept the red and washed the entire frame in it.
 
-Both runs are logged in
-[`generations.md`](projects/nyc/sequences/seq_010/sh_0010/generations.md), with
-the cost arithmetic — billing is linear in input + output duration, so a
-four-second trim of a ten-second shot probes it for 40% of the price.
+Every run is logged with its provider response, cost and verdict in
+[`generations.md`](projects/nyc/sequences/seq_010/sh_0010/generations.md);
+what building the blockout taught is in
+[`notes.md`](projects/nyc/sequences/seq_010/sh_0010/notes.md).
 
 ## Three strands
 
