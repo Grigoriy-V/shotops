@@ -1,0 +1,567 @@
+{
+  "camera": {
+    "lens": 20.0,
+    "sensor_width": 36.0,
+    "location": [0.0, -120.0, 1.5],
+    "look_at": [0.0, -80.0, 2.0],
+    "animation": {
+      "location": [
+        {
+          "t": 0.0,
+          "value": [0.0, -120.0, 1.5],
+          "ease": "smooth"
+        },
+        {
+          "t": 1.5,
+          "value": [3.9, -87.0, 1.4],
+          "ease": "smooth"
+        },
+        {
+          "t": 3.0,
+          "value": [-3.9, -52.0, 1.5],
+          "ease": "smooth"
+        },
+        {
+          "t": 4.1,
+          "value": [0.0, -21.0, 1.9],
+          "ease": "smooth"
+        },
+        {
+          "t": 4.7,
+          "value": [0.0, -10.0, 4.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 5.2,
+          "value": [0.0, -7.5, 12.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 5.9,
+          "value": [0.0, -6.0, 23.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 6.6,
+          "value": [0.0, -5.0, 31.8],
+          "ease": "smooth"
+        },
+        {
+          "t": 7.3,
+          "value": [0.0, -2.0, 33.4],
+          "ease": "smooth"
+        },
+        {
+          "t": 8.2,
+          "value": [0.0, 0.4, 34.4],
+          "ease": "smooth"
+        },
+        {
+          "t": 9.2,
+          "value": [0.0, 1.9, 34.8],
+          "ease": "smooth"
+        },
+        {
+          "t": 10.0,
+          "value": [0.0, 2.5, 34.9]
+        }
+      ],
+      "look_at": [
+        {
+          "t": 0.0,
+          "value": [0.0, -80.0, 2.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 1.5,
+          "value": [0.0, -48.0, 2.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 3.0,
+          "value": [0.0, -16.0, 2.6],
+          "ease": "smooth"
+        },
+        {
+          "t": 4.1,
+          "value": [0.0, 0.0, 7.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 4.7,
+          "value": [0.0, 0.0, 16.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 5.4,
+          "value": [0.0, 0.0, 28.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 6.0,
+          "value": [0.0, 1.0, 37.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 6.6,
+          "value": [0.0, 4.0, 37.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 7.3,
+          "value": [0.0, 18.0, 36.5],
+          "ease": "smooth"
+        },
+        {
+          "t": 8.2,
+          "value": [0.0, 45.0, 33.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 9.2,
+          "value": [0.0, 90.0, 29.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 10.0,
+          "value": [0.0, 130.0, 26.5]
+        }
+      ],
+      "roll": [
+        {
+          "t": 0.0,
+          "value": [0.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 1.5,
+          "value": [-13.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 2.25,
+          "value": [0.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 3.0,
+          "value": [13.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 4.1,
+          "value": [0.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 6.3,
+          "value": [0.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 6.9,
+          "value": [-5.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 8.2,
+          "value": [0.0],
+          "ease": "smooth"
+        },
+        {
+          "t": 10.0,
+          "value": [0.0]
+        }
+      ]
+    }
+  },
+  "objects": [
+    {
+      "name": "road",
+      "type": "plane",
+      "size": 1.0,
+      "location": [0, -65, 0],
+      "scale": [14, 130, 1],
+      "color": [0.3, 0.3, 0.31]
+    },
+    {
+      "name": "sidewalk_l",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-8.5, -65, 0.15],
+      "scale": [3, 130, 0.3],
+      "color": [0.45, 0.45, 0.45]
+    },
+    {
+      "name": "sidewalk_r",
+      "type": "cube",
+      "size": 1.0,
+      "location": [8.5, -65, 0.15],
+      "scale": [3, 130, 0.3],
+      "color": [0.45, 0.45, 0.45]
+    },
+    {
+      "name": "block_l1",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-19, -117, 14],
+      "scale": [18, 22, 28],
+      "color": [0.58, 0.58, 0.59]
+    },
+    {
+      "name": "block_l2",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-19, -91, 17],
+      "scale": [18, 22, 34],
+      "color": [0.62, 0.62, 0.63]
+    },
+    {
+      "name": "block_l3",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-19, -65, 12],
+      "scale": [18, 22, 24],
+      "color": [0.55, 0.55, 0.56]
+    },
+    {
+      "name": "block_l4",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-19, -39, 15],
+      "scale": [18, 22, 30],
+      "color": [0.6, 0.6, 0.61]
+    },
+    {
+      "name": "block_l5",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-19, -13, 13],
+      "scale": [18, 22, 26],
+      "color": [0.56, 0.56, 0.57]
+    },
+    {
+      "name": "block_r1",
+      "type": "cube",
+      "size": 1.0,
+      "location": [19, -117, 16],
+      "scale": [18, 22, 32],
+      "color": [0.61, 0.61, 0.62]
+    },
+    {
+      "name": "block_r2",
+      "type": "cube",
+      "size": 1.0,
+      "location": [19, -91, 13],
+      "scale": [18, 22, 26],
+      "color": [0.55, 0.55, 0.56]
+    },
+    {
+      "name": "block_r3",
+      "type": "cube",
+      "size": 1.0,
+      "location": [19, -65, 15],
+      "scale": [18, 22, 30],
+      "color": [0.59, 0.59, 0.6]
+    },
+    {
+      "name": "block_r4",
+      "type": "cube",
+      "size": 1.0,
+      "location": [19, -39, 11],
+      "scale": [18, 22, 22],
+      "color": [0.54, 0.54, 0.55]
+    },
+    {
+      "name": "block_r5",
+      "type": "cube",
+      "size": 1.0,
+      "location": [19, -13, 14],
+      "scale": [18, 22, 28],
+      "color": [0.57, 0.57, 0.58]
+    },
+    {
+      "name": "end_building",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, 6, 15],
+      "scale": [44, 12, 30],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "ledge_01",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 4.0],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "ledge_02",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 7.5],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "ledge_03",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 11.0],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "ledge_04",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 14.5],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "ledge_05",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 18.0],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "ledge_06",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 21.5],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "ledge_07",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 25.0],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "ledge_08",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.35, 28.5],
+      "scale": [44, 0.7, 0.5],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "pier_l",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-7.5, -0.5, 15],
+      "scale": [3, 1.0, 30],
+      "color": [0.4, 0.4, 0.41]
+    },
+    {
+      "name": "pier_c",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, -0.5, 15],
+      "scale": [3, 1.0, 30],
+      "color": [0.4, 0.4, 0.41]
+    },
+    {
+      "name": "pier_r",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.5, -0.5, 15],
+      "scale": [3, 1.0, 30],
+      "color": [0.4, 0.4, 0.41]
+    },
+    {
+      "name": "parapet_front",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, 0.4, 30.6],
+      "scale": [44, 0.8, 1.2],
+      "color": [0.68, 0.68, 0.69]
+    },
+    {
+      "name": "parapet_back",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, 11.6, 30.6],
+      "scale": [44, 0.8, 1.2],
+      "color": [0.64, 0.64, 0.65]
+    },
+    {
+      "name": "water_tower",
+      "type": "cylinder",
+      "size": 2.2,
+      "depth": 6.0,
+      "location": [6.0, 9.5, 33.5],
+      "color": [0.72, 0.72, 0.73]
+    },
+    {
+      "name": "tower_legs",
+      "type": "cube",
+      "size": 1.0,
+      "location": [6.0, 9.5, 30.6],
+      "scale": [3.4, 3.4, 1.2],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "ac_01",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.8, 6.5, 30.5],
+      "scale": [3.4, 2.4, 2.2],
+      "color": [0.7, 0.7, 0.71]
+    },
+    {
+      "name": "ac_02",
+      "type": "cube",
+      "size": 1.0,
+      "location": [2.2, 8.0, 30.4],
+      "scale": [2.6, 2.0, 1.8],
+      "color": [0.62, 0.62, 0.63]
+    },
+    {
+      "name": "stair_hut",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-5.5, 10.5, 32.0],
+      "scale": [4.0, 3.4, 4.0],
+      "color": [0.58, 0.58, 0.59]
+    },
+    {
+      "name": "car_01",
+      "type": "cube",
+      "size": 1.0,
+      "location": [5.9, -104.0, 0.75],
+      "scale": [1.9, 4.6, 1.5],
+      "color": [0.72, 0.72, 0.73]
+    },
+    {
+      "name": "car_02",
+      "type": "cube",
+      "size": 1.0,
+      "location": [5.9, -87.0, 0.75],
+      "scale": [1.9, 4.6, 1.4],
+      "color": [0.24, 0.24, 0.25]
+    },
+    {
+      "name": "car_03",
+      "type": "cube",
+      "size": 1.0,
+      "location": [1.76, -87.0, 0.8],
+      "scale": [2.0, 5.2, 1.6],
+      "color": [0.66, 0.66, 0.67]
+    },
+    {
+      "name": "car_04",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-5.9, -68.0, 0.75],
+      "scale": [1.9, 4.6, 1.5],
+      "color": [0.2, 0.2, 0.21]
+    },
+    {
+      "name": "car_05",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-5.9, -52.0, 0.75],
+      "scale": [1.9, 4.6, 1.5],
+      "color": [0.74, 0.74, 0.75]
+    },
+    {
+      "name": "car_06",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.7, -52.0, 0.9],
+      "scale": [2.1, 5.6, 1.8],
+      "color": [0.3, 0.3, 0.31]
+    },
+    {
+      "name": "car_07",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-5.9, -36.0, 0.75],
+      "scale": [1.9, 4.6, 1.5],
+      "color": [0.68, 0.68, 0.69]
+    },
+    {
+      "name": "car_08",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-5.9, -26.0, 0.75],
+      "scale": [1.9, 4.6, 1.5],
+      "color": [0.26, 0.26, 0.27]
+    },
+    {
+      "name": "pole_01",
+      "type": "cylinder",
+      "size": 0.16,
+      "depth": 9.0,
+      "location": [-7.6, -110, 4.5],
+      "color": [0.78, 0.78, 0.79]
+    },
+    {
+      "name": "pole_02",
+      "type": "cylinder",
+      "size": 0.16,
+      "depth": 9.0,
+      "location": [7.6, -92, 4.5],
+      "color": [0.78, 0.78, 0.79]
+    },
+    {
+      "name": "pole_03",
+      "type": "cylinder",
+      "size": 0.16,
+      "depth": 9.0,
+      "location": [-7.6, -74, 4.5],
+      "color": [0.78, 0.78, 0.79]
+    },
+    {
+      "name": "pole_04",
+      "type": "cylinder",
+      "size": 0.16,
+      "depth": 9.0,
+      "location": [7.6, -56, 4.5],
+      "color": [0.78, 0.78, 0.79]
+    },
+    {
+      "name": "pole_05",
+      "type": "cylinder",
+      "size": 0.16,
+      "depth": 9.0,
+      "location": [-7.6, -38, 4.5],
+      "color": [0.78, 0.78, 0.79]
+    },
+    {
+      "name": "pole_06",
+      "type": "cylinder",
+      "size": 0.16,
+      "depth": 9.0,
+      "location": [7.6, -20, 4.5],
+      "color": [0.78, 0.78, 0.79]
+    },
+    {
+      "name": "signal_arm",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-4.2, -110, 8.4],
+      "scale": [7.0, 0.18, 0.18],
+      "color": [0.8, 0.8, 0.81]
+    },
+    {
+      "name": "signal_box",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-0.9, -110, 7.9],
+      "scale": [0.5, 0.4, 1.2],
+      "color": [0.86, 0.86, 0.87]
+    }
+  ],
+  "generation": {
+    "prompt": "Photorealistic live-action footage of a dense city street at golden hour, shot on 24mm anamorphic. Asphalt is wet and dark, catching long specular streaks. Facades are weathered brick and grey stone with fire escapes and dark glass. Low sun rakes down the street from ahead, warm amber, throwing long shadows and lens flare through haze and drifting dust. Above the rooftops the sky opens onto a wide bay at sunset, a long suspension bridge in silhouette, and distant towers hazed in orange light. Deep contrast, fine film grain."
+  }
+}
