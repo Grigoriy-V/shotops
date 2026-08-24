@@ -65,7 +65,7 @@ water tower on legs.
 From roughly t = 20% to t = 40%, two raw white boxes sit in the road, untextured,
 while the buildings, road, kerb and lamp posts around them are fully rendered.
 They are `car_03` and `car_06` — the two mid-road cars at the weave peaks, the
-closest geometry in the shot at 0.85 m, placed there deliberately to sell the
+closest geometry in the shot at 0.89 m, placed there deliberately to sell the
 speed.
 
 **The style still had no cars in the road; the blockout did.** That is the
@@ -89,26 +89,52 @@ from — and the style reference has to contain that object at all.**
 
 ### Where to go next
 
-Directions set by the user, in their order of priority. **Nothing here is
-started.**
+Directions set by the user, in their order of priority.
 
 1. **A better style still.** The most critical. The look reference is doing more
    work than anything else in the pipeline, and this one was known to be loose.
+   **Not started.**
 2. **Colour the objects that matter and name the colour in the prompt** — cars in
-   red, prompt says the red blocks are cars. Costs one field per object and no
+   red, prompt says the red forms are cars. Costs one field per object and no
    geometry at all, which makes it the cheapest thing on this list to test.
+   **Built** — see [notes.md](notes.md).
 3. **Slightly more detailed car models,** so the silhouette itself carries the
-   answer rather than relying on the prompt to.
+   answer rather than relying on the prompt to. **Built** — eight primitives a
+   car, footprint unchanged.
 4. **No style still at all** — a set of style reference images instead, with the
-   prompt changed to match.
+   prompt changed to match. **Not started.**
 5. **Two to four style frames through the shot,** so the middle has a reference
-   of its own rather than inheriting one made for frame 1.
-6. **Rework the prompt.** What ran is a rough v1.
-7. **A stronger model.**
+   of its own rather than inheriting one made for frame 1. **Not started.**
+6. **Rework the prompt.** What ran is a rough v1. **Partly** — the lens claim is
+   out and the vehicles are named; the look text is untouched.
+7. **A stronger model.** **Not started.**
 
 Worth noting how (2) and (5) interact with what broke: (2) attacks the "no
 material for this object" half directly and (5) attacks it too, by giving the
 middle of the shot a reference that was made from the middle of the shot. (3)
 attacks the proximity half. They are not alternatives — they address different
-halves of the same failure, and testing them together would make attribution
-impossible.
+halves of the same failure.
+
+**Which is the cost of doing (2) and (3) together, and it is a real one.** If the
+next run comes back with cars in the road, the result will not say whether the
+colour, the silhouette or both were responsible. That was a deliberate choice —
+both are scene work and the shot wants both regardless — but it means the next
+generation is a test of the *shot*, not of a hypothesis. Separating them later
+costs one file: a second scene in this shot with the colour and the old cubes,
+which is what parallel variants are for.
+
+### Waiting on a run
+
+The scene has moved since generation 001. Nothing has been generated from it, so
+every claim about whether (2) and (3) worked is currently a hypothesis.
+
+| | |
+| --- | --- |
+| Scene id | `64dd03` (was `6de41e`) |
+| Blockout | `preview/..._64dd03_preview_v003.mp4` |
+| Stills | `frames/..._64dd03_still_v002_t***.png` |
+| Style still | none yet for this scene — the one on disk is `6de41e`, from the old cars |
+
+A style still made from the old blockout would reintroduce exactly the fault
+that broke 001: a look reference whose road disagrees with the video reference's.
+Whatever is generated next needs its still made from `64dd03`.

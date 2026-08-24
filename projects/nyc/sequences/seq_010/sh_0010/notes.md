@@ -109,13 +109,18 @@ re-placed against the baked path rather than by eye: six parked along the kerbs,
 and two standing out in the road at exactly the two weave peaks, so at each peak
 the camera threads the gap between a stopped car and a parked one — at the moment
 it is moving fastest and banked hardest. Weave amplitude came in from ±4.6 to
-±3.9 m to make that gap honest. Closest approach in the whole shot is now
-**0.85 m**, to `car_06` at t = 2.88.
+±3.9 m to make that gap honest. Closest approach in the whole shot is under a
+metre, to `car_06` at t = 2.88 — `audit` measures it exactly.
 
-Worth keeping: the clearance is measured along the car's whole 5 m length, not at
-the weave peak. The tightest moment is at the far end of the car, where the
-camera has already started to come back — placing off the peak alone left 0.51 m
-where 0.90 was intended.
+Worth keeping: the clearance has to be measured along the car's whole 5 m length,
+not at the weave peak. The tightest moment is at the far end of the car, where
+the camera has already started to come back — placing against the peak alone left
+barely half the gap intended. This is why `audit` walks every frame against every
+object's bounds rather than checking the moment that looks tightest.
+
+*The numbers in this section came from a throwaway script, since replaced by
+`audit`, which measures this spec at 0.89 m to `car_03` and 0.92 m to `car_06`.
+Where the two disagree, the command is the authority.*
 
 **The tail went black.** With 3.4 s to fill, the camera levelled off 6 m above the
 deck, which puts the roof 47° below a lens that sees 27° — three of the eight
@@ -137,28 +142,62 @@ and held them for the whole reveal. The experiment the brief set up is answered.
 **A primitive only has to look like its object at the distance it is seen from.**
 The two mid-road cars came back as raw white boxes. The same cubes read as cars
 at twenty metres, in a row along the kerb, where context supplies the answer; at
-0.85 m, filling a third of frame, there is no context left and no wheels, cabin
+0.89 m, filling a third of frame, there is no context left and no wheels, cabin
 or glass in the silhouette to infer from. Everything that survived close range —
 wall, kerb, parapet, poles — is a thing whose primitive shape is its real shape.
 
-The dressing was placed at 0.85 m on purpose, to sell the speed. That decision is
-still right; what was wrong was assuming a box could take it.
+The dressing was placed under a metre away on purpose, to sell the speed. That
+decision is still right; what was wrong was assuming a box could take it.
+
+## The cars got a silhouette and a colour
+
+*2026-08-25, in answer to generation 001.* Each car was one cube. Each is now
+eight primitives: a lower body, a greenhouse set back from centre, a raked
+windscreen, a steeper rear screen, and four wheels laid on their sides. The body
+is red — a colour the prompt is allowed to name — with dark glass and near-black
+tyres, so a car carries three values and a hue where it used to carry one.
+
+**The footprint did not change.** Every part is a fraction of the car's own
+width, length and height, and nothing is allowed outside the original box: the
+wheels sit flush with the body sides rather than proud of them. That was the
+constraint, because the whole point of these two cars is that the camera passes
+them at under a metre, and a silhouette bought at the cost of the clearance
+would be a bad trade. `audit` says the tightest approach is now **0.95 m** to
+`car_03_body` at t = 1.62 and the same to `car_06_body` at t = 2.88 — marginally
+wider than before, because the lower body no longer reaches roof height.
+
+**The rake is the part that did the work.** A body box under a roof box is two
+stacked slabs, and at a metre that is the shape of a flatbed. The slope from
+bonnet to roof is the thing a car has in profile that nothing else on this
+street has. Narrowing the greenhouse to 0.76 of the body width did the rest: it
+gives the car shoulders, so red reads down both sides of the dark glass.
+
+Everything above is generated from a footprint rather than typed, which is worth
+saying because it is the reason a van and a saloon come out at their own
+proportions from one rule.
 
 ## Open
 
-- **Roll sign** unverified, as above.
-- **The spec's prompt still says "shot on 24mm anamorphic"** while the camera is
-  20 mm. Generation 001 was run with that corrected by hand; the spec was not
-  changed to match. Naming a lens at all is camera vocabulary in a prompt where
-  the camera is already geometry.
+- ~~Roll sign unverified~~ — **settled.** The bank reads correctly in the
+  preview, into the turn in both weaves and at the roof crest. No change needed.
+- ~~The prompt says "shot on 24mm anamorphic"~~ — **removed.** The lens is
+  camera vocabulary in a prompt where the camera is already geometry, and it
+  disagreed with the 20 mm actually being rendered. The prompt now names the red
+  forms as cars instead.
 - ~~The bay, the bridge and the sunset are not built~~ — **settled by generation
   001.** The prompt supplied all of it and held it for the full reveal. No
   silhouette band needs building.
-- **The two mid-road cars need a silhouette, a colour the prompt can name, a
-  style reference that contains them, or a camera that stops passing them at
-  0.85 m.** The one thing that actually failed. Directions are listed in
-  [generations.md](generations.md); none are started.
-- **The path audit is a throwaway script.** It found all three car penetrations
-  and it does not live in the repository. It should be a command.
-- **Audio comes back enabled** whether or not it was asked for, and the provider
-  layer has nothing to say about it.
+- ~~The path audit is a throwaway script~~ — **it is `audit` now.** Free, no
+  Blender, and it fails the command when the camera is inside something.
+- ~~Audio comes back enabled~~ — **accepted.** It arrives from a server hint,
+  costs nothing extra, and is not worth a switch until something needs it off.
+- **The car is a recipe, and the spec holds the baked result.** Eight parts came
+  out of one rule about a footprint, and what landed in `street_a.json` is
+  sixty-four objects with the rule thrown away. Changing the windscreen rake now
+  means editing sixty-four entries by hand. This is exactly the thing the README
+  claims the project is for — version the recipe, not the result — and the scene
+  format has no way to say it yet.
+- **The two mid-road cars are still unproven.** They have a silhouette and a
+  colour now, but nothing has been generated from the new scene, so idea (1) —
+  a style still that actually contains them — is untested and remains the most
+  critical of the seven. See [generations.md](generations.md).
