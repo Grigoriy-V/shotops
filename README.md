@@ -1,7 +1,35 @@
-# ai_render
+# shotops
 
-Full-cycle AI render: an agent authors a 3D scene and camera, Blender renders a
-grey blockout, and a video model turns that blockout into the finished shot.
+**Shots as source code.** An agent authors a 3D scene and camera as a config
+file, Blender renders a grey blockout from it, and a video model turns that
+blockout into the finished shot — so the shot has a diff, a history and a
+revert, the way software does.
+
+## The first artifact
+
+![blockout, style still, result](docs/hero.jpg)
+
+One shot, end to end: a JSON spec → a Blender blockout → a 5s clip from Seedance
+2 mini at 480p, with a style still owning material and light.
+[`scenes/demo_room.json`](scenes/demo_room.json) is the entire authored input:
+127 lines holding ten primitives, a 32mm camera that dollies from 13.7m to 8.4m
+while dropping from 6.0m to 1.8m, and a look prompt.
+
+The claim this repo makes is structural adherence, so here is the evidence in the
+form that can actually falsify it — both clips sampled at **identical normalised
+times**, blockout on top, result below:
+
+![frame-for-frame comparison](docs/compare.jpg)
+
+The dolly, the cube's silhouette and screen position, the column behind it and
+the raking light slot all track. What changed is only what was supposed to
+change: material, lighting and colour.
+
+Both clips are in [`docs/`](docs/) — [`blockout.mp4`](docs/blockout.mp4) (237 KB)
+and [`final.mp4`](docs/final.mp4) (1.3 MB). The comparison sheet is generated,
+not assembled by hand: `python -m ai_render compare scenes/demo_room.json`. That matters,
+because eyeballing two clips at *different* moments reads as adherence when there
+is none — a mistake already made once here, and the reason the tool exists.
 
 ```
 scenes/*.json  ──▶  Blender (headless)  ──▶  out/<name>/preview.mp4
@@ -20,6 +48,56 @@ The upload hop is not optional: Seedance takes reference **videos** by URL only.
 Images and audio can go inline as base64, video cannot. The blockout goes to your
 own bucket under a random key, is passed as a signed URL with a TTL, and is
 deleted as soon as the job finishes — including when it fails.
+
+## Why this exists
+
+The generated clip is the visible half. The question underneath is older and
+bigger: **can a film production pipeline be versioned the way software is?**
+
+A studio pipeline already has structure — sequences, shots, tasks, publishes.
+What it does not have is history you can read. The unit of work is a binary DCC
+scene, so "version control" degrades to publishing a new file with a comment and
+a preview link. You can see that `v012` exists and that it looks different from
+`v011`. You cannot see *what changed*. That single missing capability costs the
+rest of the model:
+
+- **No diff.** "The camera is wrong now" starts a conversation, not a lookup.
+- **No blame.** Nobody can say which change introduced the problem, or why it
+  was made.
+- **No revert.** Rolling back means restoring a whole file, losing every
+  unrelated change that rode along in it.
+- **No branch, no merge.** Two looks cannot exist at once, and two artists
+  cannot touch one shot without one of them waiting.
+- **No bisect.** A shot that regressed over twelve publishes is debugged by
+  opening all twelve.
+
+Software solved this by making the source text and treating everything else as
+derived. That is the whole trick, and it transfers. **When the scene is a config
+file, the shot inherits git.** `scenes/*.json` is source: camera path, blocking,
+timing, look prompt. "Move the camera 20cm left" is a one-line patch with an
+author and a reason attached. Two lighting directions are two branches. The
+history of a shot is its commit log, and it is readable by a person who was not
+in the room.
+
+Everything downstream is derived and therefore disposable: the blockout render,
+the generation, the stills. They are not versioned, they are *reproduced* — which
+is why `out/` is gitignored, why each take stores the exact `scene.json` that
+produced it, and why nothing is ever overwritten. An output you cannot trace back
+to a spec is an output you cannot trust.
+
+**Where this honestly stops.** Not everything in a pipeline reduces to text.
+Geometry caches, simulations, textures and plates are genuinely large and
+genuinely binary; no amount of enthusiasm makes an Alembic file diffable. The
+claim is narrower and, I think, more useful: version the *recipe*, not the
+result. The parts of a shot that are decisions — layout, camera, timing,
+intent — are exactly the parts that are text-shaped, and they are also the parts
+people argue about. This repo is the smallest end-to-end test of that idea: a
+shot authored as config, rendered, generated, and reviewable as a diff.
+
+Two lines of work follow from it, and both belong here rather than in separate
+repos: **agents that author 3D scenes** (a spec is a much better target for a
+model than a GUI), and **the production pipeline itself** — takes, generations,
+provenance, comparison.
 
 ## Why this shape
 
@@ -44,20 +122,18 @@ of this stack. Swapping Seedance for Runway/Kling/Wan means adding a file in
 
 ## Honest video-to-video, or nothing
 
-Seedance 2.5 has native white-model control: hand it a grey blockout clip and it
+Seedance has native white-model control: hand it a grey blockout clip and it
 reads camera trajectory, framing and timing off it. That is the entire point of
-this pipeline. But **CometAPI's Seedance route documents `input_reference` as
-images only** (JPEG/PNG/WebP), and whether the gateway passes an mp4 through is
-undocumented and unverified.
+this pipeline, and it is the only mode pursued here.
 
-`reference_mode: "video"` — posting the blockout mp4 — is the only mode this
-project pursues, and **there is no automatic fallback.** Degrading to stills
-would return a plausible-looking clip that silently ignores the camera move,
-which is worse than a clear failure. If the gateway rejects video references, the
-fix is a different provider route — CometAPI documents real video-to-video on
-Runway and Kling — not a quieter version of this one.
+`reference_mode: "video"` — posting the blockout mp4 — is therefore the default,
+and **there is no automatic fallback.** Degrading to stills would return a
+plausible-looking clip that silently ignores the camera move, which is worse than
+a clear failure. If a gateway will not attach a video reference, the fix is a
+different gateway, not a quieter version of this one. That is exactly how this
+repo ended up on PiAPI; see below.
 
-`frames` (N stills as `[Image 1..N]`) and `first` stay implemented but
+`frames` (N stills as `@image1..N`) and `first` stay implemented but
 unexercised, for the day a storyboard-shaped reference is genuinely wanted.
 `render` writes the stills regardless: they cost 8 frames out of 120 and are the
 fastest way to eyeball a blockout without scrubbing video.
@@ -143,7 +219,10 @@ $env:PYTHONPATH="src"; python -m ai_render all scenes/demo_cube.json
 | `generate <scene>` | blockout → `final.mp4` via the video model |
 | `all <scene>` | both |
 | `takes <scene>` | list takes and their generations |
+| `styleframe <scene>` | restyle a blockout frame into a look reference |
+| `compare <scene>` | contact sheet, blockout vs result at matched times |
 | `extract <video>` | pull stills from any clip for comparison |
+| `fetch <task-id>` | re-download a finished task without paying again |
 
 ### Output layout
 
@@ -225,7 +304,7 @@ without Blender installed.
     "prompt": "A polished dark-granite monolith rotating in a brutalist hall...",
     "reference_mode": "video",  // video | frames | first
     "duration": 5,              // 4-30
-    "resolution": "720p",       // 480p | 720p, mapped to CometAPI's exact WxH
+    "resolution": "720p",       // 480p | 720p; 1080p on seedance-2 only
     "aspect_ratio": "16:9"
   }
 }
