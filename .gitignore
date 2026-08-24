@@ -1,0 +1,11 @@
+# Secrets. Never commit; use .env.example as the template.
+.env
+
+# Portable Blender, ~890 MB.
+.tools/
+
+# Renders, generations, manifests -- all reproducible from scenes/.
+out/
+
+__pycache__/
+*.pyc
