@@ -123,10 +123,14 @@ only exists in a conversation is lost to the next session and to anyone else.
   evidence: these are the input a style frame gets generated from.
 - `<shot>/artifacts/` — sheets, views, debug renders. The evidence.
 
-Names are `<sequence>_<shot>_<scene>_v###`, with a suffix on everything but the
-preview. Never hand-name a file: `target.name(target.next_version(), ...)` picks
-it, so the version stays monotonic and a preview shares its number with the sheet
-and the stills from the same run.
+Names are `<sequence>_<shot>_<scene>_<id>_<kind>_v###`. The id is
+`project.scene_id(spec)` — six hex of the spec's content, so everything made from
+one state of the scene carries the same one. The version counts only its own
+kind, so "the fourth sheet" means the fourth sheet.
+
+Never hand-name a file: `target.name(kind, sid, target.next_version(kind))` picks
+it. Hash the spec that actually produced the file — for `sheet`, that is the
+take's own `scene.json`, not the scene file as it stands now.
 
 `frames` is the one that costs real space — five PNGs is about 1.6 MB, and every
 version of it stays in history. Run it when heading for a generation, not after

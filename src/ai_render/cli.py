@@ -58,8 +58,8 @@ def cmd_views(args):
     import tempfile
 
     scene, target = _load(args.scene)
-    version = target.next_version()
-    sheet_path = target.artifacts_dir / f"{target.name(version, 'views')}.jpg"
+    name = target.name("views", project.scene_id(scene), target.next_version("views"))
+    sheet_path = target.dir_for("views") / f"{name}.jpg"
 
     # The merged spec is what describes the scene; the file on disk is only its
     # most specific layer. The individual PNGs are never kept -- they are four
@@ -88,8 +88,10 @@ def cmd_frames(args):
     import tempfile
 
     scene, target = _load(args.scene)
-    version = target.next_version()
-    target.frames_dir.mkdir(parents=True, exist_ok=True)
+    sid = project.scene_id(scene)
+    version = target.next_version("still")
+    out_dir = target.dir_for("still")
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp:
         merged = Path(tmp) / "scene.json"
@@ -99,14 +101,14 @@ def cmd_frames(args):
         )
         kept = []
         for path in made:
-            # `t050` is the position through the shot; carry it through as the
-            # suffix so the name says which moment this is.
-            out = target.frames_dir / f"{target.name(version, path.stem)}.png"
+            # One version covers the set; `t050` is the position within it, which
+            # is what says which moment a still is.
+            out = out_dir / f"{target.name('still', sid, version, path.stem)}.png"
             shutil.copyfile(path, out)
             kept.append(out)
 
     total = sum(p.stat().st_size for p in kept) / 1e6
-    print(f"[frames] {len(kept)} frames -> {_rel(target.frames_dir)} ({total:.1f} MB)")
+    print(f"[frames] {len(kept)} frames -> {_rel(out_dir)} ({total:.1f} MB)")
     for path in kept:
         print(f"           {path.name}")
     return 0
@@ -117,9 +119,11 @@ def cmd_sheet(args):
 
     The video is the thing actually being judged, so it belongs in the record
     too. It is small -- a 10s grey blockout is under a megabyte -- and without it
-    the sheet is eight frames with no motion between them. Both carry the same
-    version, because they are one render seen two ways.
+    the sheet is eight frames with no motion between them. They carry different
+    version numbers, being different kinds of thing, and the same scene id,
+    having come from one render.
     """
+    import json
     import shutil
 
     _, target = _load(args.scene)
@@ -129,10 +133,13 @@ def cmd_sheet(args):
         print(f"error: no stills in {_rel(take / 'frames')}", file=sys.stderr)
         return 2
 
-    version = target.next_version()
+    # The take's own snapshot, not the scene file as it stands now: these belong
+    # to the spec that rendered them, which may since have moved on.
+    sid = project.scene_id(json.loads((take / "scene.json").read_text(encoding="utf-8")))
+
     sheet = compare.grid(
         frames,
-        target.artifacts_dir / f"{target.name(version, 'frames')}.jpg",
+        target.dir_for("sheet") / f"{target.name('sheet', sid, target.next_version('sheet'))}.jpg",
         columns=4,
         labelled=True,
     )
@@ -140,8 +147,9 @@ def cmd_sheet(args):
 
     preview = take / "preview.mp4"
     if preview.exists():
-        target.preview_dir.mkdir(parents=True, exist_ok=True)
-        kept = target.preview_dir / f"{target.name(version)}.mp4"
+        out_dir = target.dir_for("preview")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        kept = out_dir / f"{target.name('preview', sid, target.next_version('preview'))}.mp4"
         shutil.copyfile(preview, kept)
         print(f"[sheet] preview -> {_rel(kept)} ({kept.stat().st_size / 1e6:.1f} MB)")
     return 0

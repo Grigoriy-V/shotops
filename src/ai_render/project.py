@@ -24,6 +24,7 @@ See docs/design/pipeline-structure.md for the reasoning.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -40,6 +41,18 @@ SHOT_FILE = "shot.json"
 LEVEL_FILES = {PROJECT_FILE, SEQUENCE_FILE, SHOT_FILE}
 
 KNOWN_ROLES = {"variant", "asset"}
+
+# What each kind of artifact is, and which directory it lives in. The kind is in
+# the file name too, because each kind counts its own versions: "preview v003" is
+# the third preview, which is the only thing a version number is good for.
+ARTIFACT_DIRS = {
+    "preview": "preview",
+    "still": "frames",
+    "views": "artifacts",
+    "sheet": "artifacts",
+}
+
+SCENE_ID_LENGTH = 6
 
 
 class ProjectError(ValueError):
@@ -117,24 +130,36 @@ class Target:
             return f"{ASSETS_DIR}_{self.scene}"
         return self.scene
 
-    def name(self, version, suffix=None):
-        """`seq_010_sh_0010_street_a_v003_frames`, or without the suffix."""
-        return f"{self.stem}_v{version:03d}" + (f"_{suffix}" if suffix else "")
+    def dir_for(self, kind):
+        return self.scene_path.parent / ARTIFACT_DIRS[kind]
 
-    def next_version(self):
-        """One counter for the scene, shared by every directory in the shot.
+    def name(self, kind, scene_id, version, suffix=None):
+        """`seq_010_sh_0010_street_a_a3f9c1_preview_v003`, plus any suffix.
 
-        Shared so that a preview, the sheet made from the same run and the stills
-        cut from it carry the same number and can be read as one thing. Taken
-        from what is on disk rather than from a stored count, so it is monotonic
-        and nothing is ever renumbered by deleting an old file -- a version in a
-        committed name has to keep meaning what it meant.
+        Two different things sit between the scene and the version, and they
+        answer two different questions. The id says *which spec this came from*,
+        so everything made from one state of the scene shares it. The version
+        says *which one of these* — and it counts only its own kind, because a
+        number that counts every file in the shot tells a human nothing.
         """
-        pattern = re.compile(re.escape(self.stem) + r"_v(\d+)")
+        base = f"{self.stem}_{scene_id}_{kind}_v{version:03d}"
+        return base + (f"_{suffix}" if suffix else "")
+
+    def next_version(self, kind):
+        """The next number for this kind of artifact, across every scene id.
+
+        Counted across ids on purpose: "the fourth preview" should mean the
+        fourth one made, not the fourth made from some particular spec. Read off
+        disk rather than from a stored count, so it is monotonic and deleting an
+        old file never renumbers a newer one -- a version in a committed name has
+        to keep meaning what it meant.
+        """
+        pattern = re.compile(
+            re.escape(self.stem) + r"_[0-9a-f]+_" + re.escape(kind) + r"_v(\d+)"
+        )
+        directory = self.dir_for(kind)
         highest = 0
-        for directory in (self.preview_dir, self.artifacts_dir, self.frames_dir):
-            if not directory.is_dir():
-                continue
+        if directory.is_dir():
             for path in directory.iterdir():
                 found = pattern.match(path.name)
                 if found:
@@ -148,6 +173,20 @@ class Target:
 
     def __repr__(self):
         return f"<Target {self.kind} {self.label}>"
+
+
+def scene_id(spec):
+    """Six hex characters standing for the content of a merged spec.
+
+    Not a counter, and deliberately not ordered: it is the answer to "which
+    version of the scene is this file from", which a sequence number can only
+    answer by keeping a ledger that can fall out of step. This can be recomputed
+    from the spec at any time by anyone -- edit one number in the camera track
+    and it changes; change nothing and every file made today matches the ones
+    made last week.
+    """
+    canonical = json.dumps(spec, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:SCENE_ID_LENGTH]
 
 
 def _split(path):

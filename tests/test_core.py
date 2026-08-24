@@ -8,6 +8,7 @@ import importlib
 import json
 import math
 import os
+import re
 import sys
 import types
 from pathlib import Path
@@ -264,38 +265,55 @@ nyc_scene = ROOT / "projects" / "nyc" / "sequences" / "seq_010" / "sh_0010" / "s
 nyc = project_mod.resolve(nyc_scene)
 check("stem carries sequence, shot and scene", nyc.stem, "seq_010_sh_0010_street_a")
 check("no project in the name", "nyc" not in nyc.stem, True)
-check("preview name has no suffix", nyc.name(5), "seq_010_sh_0010_street_a_v005")
-check("suffixed name", nyc.name(12, "frames"), "seq_010_sh_0010_street_a_v012_frames")
+check("id and kind sit between scene and version",
+      nyc.name("preview", "a3f9c1", 3), "seq_010_sh_0010_street_a_a3f9c1_preview_v003")
+check("a still carries its position",
+      nyc.name("still", "a3f9c1", 2, "t050"), "seq_010_sh_0010_street_a_a3f9c1_still_v002_t050")
 check("standalone falls back to the scene", project_mod.resolve(ROOT / "loose.json").stem, "loose")
+
+print("scene id -- content, not a counter")
+spec_a = {"duration": 10.0, "objects": [{"name": "road", "scale": [14, 130, 1]}]}
+spec_b = {"objects": [{"scale": [14, 130, 1], "name": "road"}], "duration": 10.0}
+check("same content, same id", project_mod.scene_id(spec_a), project_mod.scene_id(spec_b))
+check("key order does not matter", project_mod.scene_id(spec_a), project_mod.scene_id(spec_b))
+moved = json.loads(json.dumps(spec_a))
+moved["objects"][0]["scale"][0] = 14.5
+check("one number changes it", project_mod.scene_id(moved) != project_mod.scene_id(spec_a), True)
+check("six hex characters", len(project_mod.scene_id(spec_a)), 6)
+check("matches the name pattern", re.fullmatch(r"[0-9a-f]{6}", project_mod.scene_id(spec_a)) is not None, True)
 
 with _tempfile.TemporaryDirectory() as _tmp:
     shot_dir = Path(_tmp) / "projects" / "p" / "sequences" / "seq_010" / "sh_0010"
     shot_dir.mkdir(parents=True)
     (shot_dir / "a.json").write_text("{}", encoding="utf-8")
     fresh = project_mod.resolve(shot_dir / "a.json")
-    check("first version is 1", fresh.next_version(), 1)
+    check("first version is 1", fresh.next_version("preview"), 1)
 
-    fresh.artifacts_dir.mkdir()
-    (fresh.artifacts_dir / f"{fresh.name(1, 'frames')}.jpg").write_text("x", encoding="utf-8")
-    check("counts what is on disk", fresh.next_version(), 2)
+    fresh.dir_for("preview").mkdir()
+    (fresh.dir_for("preview") / f"{fresh.name('preview', 'aaaaaa', 1)}.mp4").write_text("x", encoding="utf-8")
+    check("counts what is on disk", fresh.next_version("preview"), 2)
 
-    # Shared across both directories: a preview and the sheet from the same run
-    # have to carry the same number, so neither may advance alone.
-    fresh.preview_dir.mkdir()
-    (fresh.preview_dir / f"{fresh.name(7)}.mp4").write_text("x", encoding="utf-8")
-    check("preview counts too", fresh.next_version(), 8)
+    # Each kind counts itself: "the fourth preview" has to mean the fourth
+    # preview, not the fourth file of any sort in the shot.
+    check("another kind is unaffected", fresh.next_version("views"), 1)
+    fresh.dir_for("views").mkdir()
+    (fresh.dir_for("views") / f"{fresh.name('views', 'aaaaaa', 6)}.jpg").write_text("x", encoding="utf-8")
+    check("views counts views", fresh.next_version("views"), 7)
+    check("sheet shares the directory but not the count", fresh.next_version("sheet"), 1)
+    check("preview still unaffected", fresh.next_version("preview"), 2)
 
-    fresh.frames_dir.mkdir()
-    (fresh.frames_dir / f"{fresh.name(9, 't050')}.png").write_text("x", encoding="utf-8")
-    check("stills count too", fresh.next_version(), 10)
+    # A new scene id does not restart the count -- otherwise two files could
+    # both be "preview v001".
+    (fresh.dir_for("preview") / f"{fresh.name('preview', 'bbbbbb', 2)}.mp4").write_text("x", encoding="utf-8")
+    check("counts across ids", fresh.next_version("preview"), 3)
 
     # Deleting an old file must not renumber a name that is already committed.
-    (fresh.artifacts_dir / f"{fresh.name(1, 'frames')}.jpg").unlink()
-    check("high-water mark, not a count", fresh.next_version(), 10)
+    (fresh.dir_for("preview") / f"{fresh.name('preview', 'aaaaaa', 1)}.mp4").unlink()
+    check("high-water mark, not a count", fresh.next_version("preview"), 3)
 
     (shot_dir / "b.json").write_text("{}", encoding="utf-8")
     other = project_mod.resolve(shot_dir / "b.json")
-    check("a sibling scene counts separately", other.next_version(), 1)
+    check("a sibling scene counts separately", other.next_version("preview"), 1)
 
 print("project structure -- inheritance")
 merged = project_mod.merge(

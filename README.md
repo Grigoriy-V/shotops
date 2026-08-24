@@ -342,12 +342,11 @@ Three directories, because these are three different kinds of thing — one is t
 deliverable, one is an input to what comes next, and the rest is evidence:
 
 ```
-<shot>/preview/    seq_010_sh_0010_street_a_v005.mp4          <- the blockout
-<shot>/frames/     seq_010_sh_0010_street_a_v008_t000.png     <- stills, by position
-                   seq_010_sh_0010_street_a_v008_t025.png        through the shot
-                   ...
-<shot>/artifacts/  seq_010_sh_0010_street_a_v005_frames.jpg   <- contact sheet
-                   seq_010_sh_0010_street_a_v006_views.jpg    <- top/front/side/3q
+<shot>/preview/    seq_010_sh_0010_street_a_6de41e_preview_v002.mp4
+<shot>/frames/     seq_010_sh_0010_street_a_6de41e_still_v001_t000.png
+                   seq_010_sh_0010_street_a_6de41e_still_v001_t025.png   ...
+<shot>/artifacts/  seq_010_sh_0010_street_a_6de41e_sheet_v004.jpg
+                   seq_010_sh_0010_street_a_70bf8c_views_v001.jpg
 ```
 
 `frames` renders stills straight from the spec at full size — evenly spaced, first
@@ -358,16 +357,27 @@ changes. They are not pulled out of the preview: an image model sees whatever it
 is handed, and there is no reason to hand it something that has been through a
 video codec.
 
-The name carries sequence, shot, scene and version — everything that would
-otherwise be ambiguous the moment a file is downloaded, pasted into a message, or
-sat next to a file from another shot. The project is left out: these live inside
-it already.
+### Reading a file name
 
-One version counter serves the whole scene, so a preview and the sheet made from
-the same run share a number and read as one thing. It is taken from what is on
-disk rather than from a stored count, which makes it monotonic: deleting an old
-file never renumbers a newer one, because a version in a committed name has to
-keep meaning what it meant.
+`<sequence>_<shot>_<scene>_<id>_<kind>_v###`. The project is left out — these live
+inside it already. Everything else is there because it is what goes missing the
+moment a file is downloaded, pasted into a message, or sat next to a file from
+another shot.
+
+The two middle parts answer different questions, which is why both exist.
+
+**The id** is six hex characters of the spec's content, so everything made from
+one state of the scene carries the same one. `6de41e_preview_v002` and
+`6de41e_sheet_v004` are the same render seen two ways; `70bf8c_preview_v001` is
+from a scene that has since been edited. It is a hash rather than a counter on
+purpose: it can be recomputed from the spec by anyone at any time, so "is this
+still current?" is a question you can answer from the files themselves instead of
+from a ledger that can fall out of step.
+
+**The version** counts its own kind and nothing else, so "the fourth sheet" means
+the fourth sheet. It is a high-water mark read off disk, so deleting an old file
+never renumbers a newer one — a version in a committed name has to keep meaning
+what it meant.
 
 ### Output layout
 
