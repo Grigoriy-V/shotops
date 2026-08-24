@@ -197,7 +197,17 @@ proportions from one rule.
   means editing sixty-four entries by hand. This is exactly the thing the README
   claims the project is for — version the recipe, not the result — and the scene
   format has no way to say it yet.
-- **The two mid-road cars are still unproven.** They have a silhouette and a
-  colour now, but nothing has been generated from the new scene, so idea (1) —
-  a style still that actually contains them — is untested and remains the most
-  critical of the seven. See [generations.md](generations.md).
+- ~~The two mid-road cars are still unproven~~ — **proven.** Generations 002 and
+  003 both bring them back as cars at the 0.95 m pass, with wheels, glass, tail
+  lights and plates. The 001 failure does not recur.
+- **The red is a marker, not a paint order.** 003 came back with a yellow taxi
+  and a dark saloon where the spec says `[0.75, 0.08, 0.06]`. The colour does
+  its job — it makes each car one object the prompt can point at — and then the
+  look reference decides what that object is actually painted. 002, which did
+  *not* tell the model to take appearance from the references, kept the red and
+  flattened the whole frame into one warm band. Worth knowing before anyone
+  treats a `color` field as art direction.
+- **What to colour next is now a real question.** If colour is an attachment
+  point rather than a look, then the useful rule is one hue per *class* of
+  thing, distinct from its neighbours — not a hue chosen because it is what the
+  object would be. Nothing in the spec or in `check` says this yet.

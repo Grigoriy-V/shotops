@@ -89,25 +89,23 @@ from — and the style reference has to contain that object at all.**
 
 ### Where to go next
 
-Directions set by the user, in their order of priority.
+Directions set by the user, in their order of priority. *Where each one now
+stands is tracked at the end of 003, not here — this is what was decided on the
+day.*
 
 1. **A better style still.** The most critical. The look reference is doing more
    work than anything else in the pipeline, and this one was known to be loose.
-   **Not started.**
 2. **Colour the objects that matter and name the colour in the prompt** — cars in
    red, prompt says the red forms are cars. Costs one field per object and no
    geometry at all, which makes it the cheapest thing on this list to test.
-   **Built** — see [notes.md](notes.md).
 3. **Slightly more detailed car models,** so the silhouette itself carries the
-   answer rather than relying on the prompt to. **Built** — eight primitives a
-   car, footprint unchanged.
+   answer rather than relying on the prompt to.
 4. **No style still at all** — a set of style reference images instead, with the
-   prompt changed to match. **Not started.**
+   prompt changed to match.
 5. **Two to four style frames through the shot,** so the middle has a reference
-   of its own rather than inheriting one made for frame 1. **Not started.**
-6. **Rework the prompt.** What ran is a rough v1. **Partly** — the lens claim is
-   out and the vehicles are named; the look text is untouched.
-7. **A stronger model.** **Not started.**
+   of its own rather than inheriting one made for frame 1.
+6. **Rework the prompt.** What ran is a rough v1.
+7. **A stronger model.**
 
 Worth noting how (2) and (5) interact with what broke: (2) attacks the "no
 material for this object" half directly and (5) attacks it too, by giving the
@@ -123,18 +121,161 @@ generation is a test of the *shot*, not of a hypothesis. Separating them later
 costs one file: a second scene in this shot with the colour and the old cubes,
 which is what parallel variants are for.
 
-### Waiting on a run
+Both were answered by 002 and 003, below. The attribution cost was paid as
+predicted, and then some.
 
-The scene has moved since generation 001. Nothing has been generated from it, so
-every claim about whether (2) and (3) worked is currently a hypothesis.
+---
+
+## 002 — 2026-08-25, four seconds, no style still
+
+Run by hand in the provider's playground, not through the CLI. A deliberately
+cheap probe: the first four seconds of the shot only, to see whether the new
+cars survive close range before paying for a full ten.
+
+### Setup
 
 | | |
 | --- | --- |
-| Scene id | `64dd03` (was `6de41e`) |
-| Blockout | `preview/..._64dd03_preview_v003.mp4` |
-| Stills | `frames/..._64dd03_still_v002_t***.png` |
-| Style still | none yet for this scene — the one on disk is `6de41e`, from the old cars |
+| Task | `711402f5-3ee9-43af-811d-9bd3fa5aa5ac` |
+| Model | `seedance-2-fast`, 480p, 16:9, **4 s** |
+| `@video1` | the 4 s trim of `preview/..._64dd03_preview_v003.mp4` |
+| `@image1..3` | three frames from a released animated feature, as look references |
+| Result | `render/..._64dd03_render_v002_4s.mp4`, 864×496, 97 frames |
+| Compared | `artifacts/..._64dd03_sheet_v007_vs_render_v002.jpg` |
+| Cost | 3,840,000 points |
 
-A style still made from the old blockout would reintroduce exactly the fault
-that broke 001: a look reference whose road disagrees with the video reference's.
-Whatever is generated next needs its still made from `64dd03`.
+**Three things changed at once from 001** — the scene (new cars, new colour), the
+model (`seedance-2-fast` in place of `seedance-2-mini-less-restriction`), and the
+whole approach to the look reference. Nothing here is a controlled experiment.
+
+**This is direction (4), and it is the interesting part.** There is no style
+still. The one generated from the blockout is gone, and in its place are three
+unrelated images that carry only the look. That inverts the reference contract:
+`@video1` owns the motion and the staging, the images own the palette and the
+render style, and neither is asked to agree with the other about what is in the
+road. The contradiction that broke 001 cannot arise, because no look reference
+is describing this street.
+
+### What held
+
+**The cars came back as cars.** This is the 001 failure, and it does not recur.
+At the close pass they have bodies, windscreens, wheels, tail lights and number
+plates. Either the silhouette, the colour, the reference change or the model did
+it — see the attribution note above; the shot works, the hypothesis does not.
+
+### What broke
+
+**Everything landed in one warm band.** Buildings, road, haze and cars all sit
+in the same orange-red register, so the cars separate from the blocks by
+brightness alone and barely by hue. The car colour the spec asks for is red;
+the sun down the street is amber; the model resolved the two by painting the
+whole frame in that key.
+
+Which makes the red suspect rather than proven. It was chosen so the prompt
+could *name* the objects; what it appears to have done here is also set the
+palette.
+
+---
+
+## 003 — 2026-08-25, the full ten
+
+Same three look references, same model, full length, prompt reworked. The user's
+verdict: **this closes the stage.** Good enough as a proof of concept and as a
+fast previz. There is flickering, read as a limit of the model at 480p rather
+than of the pipeline — the contact sheet cannot confirm or deny that, sixteen
+stills being the wrong instrument for temporal noise.
+
+### Setup
+
+| | |
+| --- | --- |
+| Task | `7253e8b0-671b-4641-9ee0-3c13c734d774` |
+| Model | `seedance-2-fast`, 480p, 16:9, 10 s |
+| `@video1` | `preview/..._64dd03_preview_v003.mp4` |
+| `@image1..3` | the same three look references as 002 |
+| Result | `render/..._64dd03_render_v003.mp4`, 864×496, 241 frames |
+| Compared | `artifacts/..._64dd03_sheet_v008_vs_render_v003.jpg` |
+| Cost | 9,600,000 points |
+| Time | 3 m 06 s |
+
+### What changed in the prompt
+
+Two additions, and they are the whole difference:
+
+> Don't rely on the appearance of the objects or the reference video. The
+> appearance is determined solely by the reference images.
+
+and the backdrop written out explicitly — the bay, the suspension bridge, the
+distant towers — where 001 and 002 left it to "golden hour" and hope.
+
+### What held
+
+**The near cars are a yellow taxi and a dark saloon.** At 13% and 27%, at the
+0.95 m pass, both are fully rendered with tail lights, plates and a roof sign.
+This is the thing 001 got wrong, answered as completely as it can be.
+
+**They are not red.** The spec paints them `[0.75, 0.08, 0.06]` and the model
+overrode it from the look references. Which is the finding worth keeping:
+
+> **Colour in the blockout is a marker, not a specification.** It says *there is
+> one object here and this is where it ends*. What the object is finally painted
+> comes from the look reference. Naming the colour in the prompt is how the two
+> stay attached — and releasing the model from it, as 003 does explicitly, is
+> what stops the marker from leaking into the palette.
+
+002 → 003 is a one-variable change on that point, near enough: same model, same
+references, same scene, and the warm-on-warm flattening is gone. The frame now
+separates cool blue-grey masonry from the warm sun down the street.
+
+**The backdrop, again, and better.** Bay, suspension bridge, skyline, water — all
+of it from the prompt, none of it in the geometry, held steady for the whole
+reveal. The water tower primitive comes back as a water tower on legs, the
+parapet as a parapet, the AC units as AC units.
+
+**The wall reads.** The eight ledges become window rows; the climb from 40% to
+60% is legible as a climb rather than as a grey pan.
+
+### What is still open in the result
+
+- **Flicker**, per the user's read above. Unmeasured.
+- **The empty stretch at 60%** is a pale wash — the blockout is a flat facade
+  filling frame with the sky above it, and the result is not much more. The
+  moment before a reveal is the one with least to hold onto.
+- **The three look references are frames from a commercial film.** Fine as a
+  look probe, which is what this was. Not a house style, and not something to
+  build a pipeline default on.
+- **`styleframes/v002.png`** — a comic-book street with red cars and a dead-end
+  building, generated but used by neither run. Worth a run of its own, since it
+  is the one look reference that actually contains *this* street.
+
+### Cost, which is now a straight line
+
+| Run | Model | Billed | Points | Per billed second |
+| --- | --- | --- | --- | --- |
+| 001 | `seedance-2-mini-less-restriction` | 10 s in + 10 s out | 6,900,000 | 345,000 |
+| 002 | `seedance-2-fast` | 4 s in + 4 s out | 3,840,000 | 480,000 |
+| 003 | `seedance-2-fast` | 10 s in + 10 s out | 9,600,000 | 480,000 |
+
+Exactly linear in billed duration, and `fast` is 39% dearer per second than the
+mini. The practical consequence is 002's whole reason for existing: **a four-
+second probe costs 40% of the ten-second run.** Trimming the blockout is the
+cheapest instrument in the pipeline for anything that fails in the first
+seconds — which is where close-range dressing fails.
+
+### Where the seven directions stand now
+
+1. **A better style still.** **Overtaken.** Replaced by (4) rather than done.
+   The unused `v002.png` is the one still worth testing.
+2. **Colour and name it.** **Built and tested** — but see the marker finding:
+   it works as an attachment point, not as a paint order.
+3. **More detailed cars.** **Built and tested.** The close pass survives.
+4. **No style still, a set of look references instead.** **Built and tested,
+   twice.** This is the change that carried both runs.
+5. **Two to four style frames through the shot.** **Not started**, and less
+   urgent now: (4) removed the reason the middle of the shot needed its own
+   reference.
+6. **Rework the prompt.** **Done for now** — the lens is out, the objects are
+   named, the backdrop is written, and the model is told which reference owns
+   appearance.
+7. **A stronger model.** **Not started.** 003 ran on `fast`; the ceiling above
+   it is untested, and the flicker is the first thing that would test it.

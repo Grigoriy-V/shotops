@@ -79,6 +79,38 @@ Full account with the provider log in
 building the blockout taught is in
 [`notes.md`](projects/nyc/sequences/seq_010/sh_0010/notes.md).
 
+## The same shot, fixed
+
+*2026-08-25.* Two changes to the scene — each car rebuilt from eight primitives
+instead of one cube, and given a colour the prompt is allowed to name — and one
+change to the references: **no style still at all.** In its place, three
+unrelated images carrying nothing but palette and render style.
+
+![blockout against result](projects/nyc/sequences/seq_010/sh_0010/artifacts/seq_010_sh_0010_street_a_64dd03_sheet_v008_vs_render_v003.jpg)
+
+The two cars that came back as white boxes are now a yellow taxi and a dark
+saloon, fully rendered at the 0.95 m pass, and the rooftop reveal still invents
+its bay, bridge and skyline out of an empty sky.
+
+Dropping the style still is the part that generalises. Restyling the blockout's
+own frame sounds right and contains a trap: the still gets made before the
+dressing is finished, and then contradicts it — which is exactly how the boxes
+were lost. References that describe only the *look* cannot disagree with the
+blockout about what is standing in the road, because they are not describing
+that road.
+
+The other finding cost nothing and was not expected. The cars are authored red;
+they came back yellow and near-black. **Colour in a blockout is a marker, not a
+specification** — it says *there is one object here and this is where it ends*,
+so the prompt has something to point at, and the look reference decides what it
+is finally painted. The run that did *not* tell the model to take appearance
+from the images kept the red and washed the whole frame in it.
+
+Both runs are logged in
+[`generations.md`](projects/nyc/sequences/seq_010/sh_0010/generations.md), with
+the cost arithmetic — billing is linear in input + output duration, so a
+four-second trim of a ten-second shot probes it for 40% of the price.
+
 ## Three strands
 
 The project is early, and it is deliberately three things at once, because
@@ -619,11 +651,28 @@ Two API details worth knowing: `input_fidelity` must **not** be sent to
 `gpt-image-2` (it always runs at high fidelity and rejects the parameter), and
 `size` defaults to `auto` here so the edit keeps the frame's proportions.
 
+**This section describes what the CLI does, not what has worked best.** The two
+runs that fixed the NYC shot used no style still: three unrelated look
+references, plus a prompt line saying the video is a guide for movement and
+composition only and that appearance comes solely from the images. A still made
+by restyling the blockout is made *before* the dressing is settled, and then
+disagrees with it — which is how two cars got dropped. References that carry
+only palette and render style have nothing to disagree with.
+
+The provider layer takes a single `style_image` and sends one `@image1`, so that
+arrangement is not reachable from `generate` yet. Making `--style` repeatable,
+and putting the ownership line into `build_reference_prompt`, is the open work.
+
 ## Cost
 
 PiAPI bills **input + output** duration, so a 5s blockout under a 5s shot is
 charged as 10s. Iterate on `seedance-2-mini` at `480p`, and only move up once the
 camera move is right.
+
+Billing is linear in that total, which makes a **trimmed blockout the cheapest
+probe there is**: four seconds of a ten-second shot costs 40% of the full run,
+and dressing usually fails in the first seconds, where the camera is closest to
+things. `ffmpeg -t 4 -c copy` cuts one without re-encoding.
 
 Every stage before `generate` is free, which is why `check`, `render`, `extract`
 and `compare` are separate commands — get the blockout right locally, then pay

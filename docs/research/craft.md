@@ -74,6 +74,39 @@ which is worth something, and they are SEO-driven, which is worth less)*:
 The `demo_room` prompt already follows most of this by accident. Worth making it
 a documented convention rather than a habit.
 
+## What our own runs have shown
+
+*High confidence — these come from generations on this repo's own shots, not from
+the survey. Full accounts live next to the specs that produced them.*
+
+- **A primitive only has to look like its object at the distance it is seen
+  from.** Distance buys inference: a box in a row along a kerb reads as a parked
+  car because the street says so. Proximity spends it — the same box at under a
+  metre, filling frame, comes back as a box. Detail belongs where the camera
+  goes close, and nowhere else.
+- **Every reference must agree about what is in frame.** A blockout saying
+  *objects are standing here* against a style still saying *the road is empty*
+  gets resolved by dropping the objects. This is the failure mode of restyling
+  the blockout's own frame: the still is made before the dressing is trusted,
+  and then contradicts it.
+- **Colour in the blockout is a marker, not a specification.** It says *there is
+  one object here and this is where it ends*, so the prompt has something to
+  point at. What the object is finally painted comes from the look reference.
+  Cars authored red came back as a yellow taxi and a dark saloon, and the run
+  that did *not* release the model from the marker painted the whole frame in
+  that hue instead.
+- **Say which reference owns appearance.** "The video is a guide for movement
+  and composition only; appearance comes solely from the images" is the line
+  that separated the two. Without it the model treats the blockout as art
+  direction.
+- **Look references need not describe the scene at all.** Unrelated images
+  carrying only palette and render style work, and they cannot contradict the
+  blockout about staging, because they are not describing that street. This is
+  the cheaper and more robust arrangement than a style still per shot.
+- **Trim the blockout before probing.** Billing is linear in input + output
+  duration, so a four-second cut of a ten-second shot costs 40% of the run. Most
+  dressing failures happen in the first seconds, where the camera is closest.
+
 ## The open problem: more than one shot
 
 Everything above concerns a single shot. The moment there are two, the craft that
