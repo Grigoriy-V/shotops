@@ -258,6 +258,95 @@ check("one does not divide by zero", rf.positions(1), [0.0])
 check("names round to whole percent", ["t%03d" % round(p * 100) for p in rf.positions(5)],
       ["t000", "t025", "t050", "t075", "t100"])
 
+print("audit -- bounds and clearance")
+from ai_render import audit as audit_mod  # noqa: E402
+
+check("a cube's half extents follow size and scale",
+      audit_mod._half_extents({"type": "cube", "size": 1.0, "scale": [1.9, 4.6, 1.5]}),
+      (0.95, 2.3, 0.75))
+check("a plane is flat", audit_mod._half_extents({"type": "plane", "size": 2.0})[2], 0.0)
+check("a cylinder is radius by depth",
+      audit_mod._half_extents({"type": "cylinder", "size": 0.34, "depth": 0.25}),
+      (0.34, 0.34, 0.125))
+# A wheel: a cylinder laid on its side, so the depth axis becomes X.
+laid = audit_mod._rotated_extents(
+    {"type": "cylinder", "size": 0.34, "depth": 0.25, "rotation": [0, 90, 0]}
+)
+check("rotating 90 about Y swaps X and Z", [round(v, 6) for v in laid], [0.125, 0.34, 0.34])
+check("an unrotated object is untouched",
+      audit_mod._rotated_extents({"type": "cube", "size": 2.0}), (1.0, 1.0, 1.0))
+check("animated scale is measured at its widest",
+      audit_mod._half_extents({
+          "type": "cube", "size": 1.0, "scale": [1.0, 1.0, 1.0],
+          "animation": {"scale": [{"t": 0.0, "value": [1.0, 1.0, 1.0]},
+                                  {"t": 1.0, "value": [4.0, 1.0, 1.0]}]},
+      })[0], 2.0)
+
+check("distance to a box is zero inside it",
+      audit_mod._box_distance([0, 0, 0], [0, 0, 0], (1, 1, 1)), 0.0)
+check("distance is measured to the face",
+      audit_mod._box_distance([3, 0, 0], [0, 0, 0], (1, 1, 1)), 2.0)
+check("and to the corner when past two faces",
+      audit_mod._box_distance([4, 4, 0], [0, 0, 0], (1, 1, 1)), math.sqrt(18))
+
+# The failure this command exists for: a camera flying straight through a car.
+through = {
+    "fps": 24, "duration": 1.0,
+    "camera": {"look_at": [0, 10, 1], "animation": {"location": [
+        {"t": 0.0, "value": [0.0, -10.0, 1.0], "ease": "linear"},
+        {"t": 1.0, "value": [0.0, 10.0, 1.0]},
+    ]}},
+    "objects": [{"name": "car", "type": "cube", "size": 1.0,
+                 "location": [0, 0, 0.75], "scale": [1.9, 4.6, 1.5]}],
+}
+gaps = audit_mod.clearances(through, audit_mod.path(through))
+check("a penetration reads as zero clearance", gaps[0]["distance"], 0.0)
+lines, hits = audit_mod.report(through)
+check("and is reported as a hit", [h["name"] for h in hits], ["car"])
+
+aside = json.loads(json.dumps(through))
+aside["objects"][0]["location"] = [5.0, 0.0, 0.75]
+clear = audit_mod.clearances(aside, audit_mod.path(aside))
+check("moved aside, the gap is body edge to camera", round(clear[0]["distance"], 6), 4.05)
+check("nothing is reported as a hit", audit_mod.report(aside)[1], [])
+
+print("audit -- motion")
+fps = 24
+straight = audit_mod.motion(audit_mod.path(through), fps)
+check("constant speed on a linear track", round(straight[-1]["speed"], 3), 20.0)
+check("and no acceleration", round(straight[-1]["accel"], 3), 0.0)
+check("a linear move has no stalls", audit_mod.stalls(straight), [])
+
+# `ease` on every key is the arrive-halt-continue fault, and it has to be
+# caught in the middle of a move but not at the end of one.
+halting = {
+    "fps": 24, "duration": 4.0,
+    "camera": {"look_at": [0, 0, 0], "animation": {"location": [
+        {"t": 0.0, "value": [0.0, 0.0, 0.0], "ease": "ease"},
+        {"t": 2.0, "value": [40.0, 0.0, 0.0], "ease": "ease"},
+        {"t": 4.0, "value": [80.0, 0.0, 0.0]},
+    ]}},
+    "objects": [],
+}
+halting_stalls = audit_mod.stalls(audit_mod.motion(audit_mod.path(halting), fps))
+check("a chain of eased keys stalls at the join", len(halting_stalls), 1)
+check("and the stall is at the key, not at the end",
+      abs(halting_stalls[0]["t"] - 2.0) < 0.2, True)
+
+smoothed = json.loads(json.dumps(halting))
+for key in smoothed["camera"]["animation"]["location"]:
+    key["ease"] = "smooth"
+check("smooth easing does not stall",
+      audit_mod.stalls(audit_mod.motion(audit_mod.path(smoothed), fps)), [])
+
+settling = json.loads(json.dumps(halting))
+settling["camera"]["animation"]["location"] = [
+    {"t": 0.0, "value": [0.0, 0.0, 0.0], "ease": "out"},
+    {"t": 4.0, "value": [80.0, 0.0, 0.0]},
+]
+check("a shot that comes to rest is not a stall",
+      audit_mod.stalls(audit_mod.motion(audit_mod.path(settling), fps)), [])
+
 print("project structure -- artifact names")
 import tempfile as _tempfile  # noqa: E402
 

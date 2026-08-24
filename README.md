@@ -59,7 +59,7 @@ appears at the end of a move does not have to be built.
 **What it broke.** From roughly 20% to 40% two raw white boxes sit in the road,
 untextured, while the buildings and kerbs around them are fully rendered. They
 are the two cars standing out in the traffic lane — the closest geometry in the
-shot, passed at 0.85 m to sell the speed.
+shot, passed at 0.89 m to sell the speed.
 
 The cause is not that a cube is a poor car. It is that **the two references were
 handed contradictory accounts of the same surface**: the blockout said *there are
@@ -322,6 +322,7 @@ $env:PYTHONPATH="src"; python -m ai_render all projects/demo/sequences/seq_010/s
 | Command | Does |
 | --- | --- |
 | `check <scene>` | validate the spec, no rendering, no cost |
+| `audit <scene>` | measure the camera move: speed, stalls, clearance to everything |
 | `render <scene>` | Blender → a new take with `preview.mp4` |
 | `generate <scene>` | blockout → `final.mp4` via the video model |
 | `all <scene>` | both |
@@ -452,6 +453,33 @@ adherence when there is none; that mistake has already been made once here.
 
 Run `check` before `render` and `render` before `generate` — each stage is free
 until the last one, so failures should surface as early as possible.
+
+### Measuring a move before rendering it
+
+```bash
+python -m ai_render audit projects/nyc/sequences/seq_010/sh_0010/street_a.json
+```
+
+```
+speed     max 30.2 m/s at t=3.58  (109 km/h), mean 15.0 m/s
+stalls    none -- the move never stops and restarts
+clearance closest 4 of 104 objects:
+            0.95 m  car_03_body          t=1.62
+            0.95 m  car_06_body          t=2.88
+```
+
+No Blender, no pixels, no cost. It bakes the path from the same interpolation
+the render uses — a check that evaluated a different curve would be checking a
+different shot — and exits non-zero if the camera ends up inside anything, so it
+can gate a render rather than merely inform one.
+
+It exists because of an escape. Retiming a move slides the path against dressing
+that did not move with it, and a clearance that held before the change did not
+hold after: the camera flew through three parked cars, and eight frames of grey
+contact sheet showed nothing, because from inside a car there is nothing to see.
+Speed and stalls come along for free once the path is baked — a chain of eased
+keyframes stops dead at every one of them, which is obvious in a number and easy
+to miss in a video.
 
 ```bash
 python tests/test_core.py

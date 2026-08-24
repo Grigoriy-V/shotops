@@ -68,6 +68,18 @@ him.
 This is also the piece with no equivalent anywhere else: it is only possible
 because shots are data.
 
+**Built, 2026-08-25, as `audit`.** It bakes the camera path from the same
+`interpolate.sample` the render uses -- a check evaluating a different curve
+would be checking a different shot -- and reports speed, acceleration, aim rate,
+stalls, and closest approach to every object's bounds. It exits non-zero on a
+penetration, so it can gate a render rather than merely inform one.
+
+The prompt for it was a real escape: retiming a move slid the path against
+dressing that had not moved with it, and the camera ended up inside three parked
+cars. A contact sheet does not show that, because from inside a car there is
+nothing to see. The frustum half of the list above -- is the subject in frame,
+what fraction of frame height, which screen side -- is not built yet.
+
 ### 2. Multi-view — for what arithmetic cannot say
 
 Extra views rendered in the same single Blender run, so the cost stays roughly

@@ -46,10 +46,10 @@ either.
 
 **Free — run freely:**
 
-`check`, `render`, `views`, `sheet`, `extract`, `compare`, `takes`,
-`tools/check_env.py`, the test suite. Everything Blender does is local and costs
-nothing. Prefer these: most questions about a shot can be answered from the
-blockout before any money moves.
+`check`, `audit`, `render`, `views`, `frames`, `sheet`, `extract`, `compare`,
+`takes`, `tools/check_env.py`, the test suite. Everything Blender does is local
+and costs nothing. Prefer these: most questions about a shot can be answered
+from the blockout before any money moves.
 
 Uploading the blockout to Supabase is free but still outward-facing; it only
 happens as part of `generate`, which is gated anyway.
@@ -94,8 +94,10 @@ for.
 
 **Never let the camera pass through geometry.** Close is the point; penetration
 is a mistake. Retiming a move slides it against fixed dressing, so a path that
-was clear before a timing change is not clear after one — measure the baked
-path, do not assume.
+was clear before a timing change is not clear after one. Run `audit` — it is
+free, it measures the baked path rather than the keys, and it exits non-zero
+when the camera is inside something. Eyes on a contact sheet cannot do this: a
+camera inside a car renders as nothing at all.
 
 **A continuous move uses `smooth` easing.** The other modes shape one segment at
 a time and stop at every key; a flight authored with `ease` arrives, halts and

@@ -8,7 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import blender_runner, compare, env, project, runs, spec as spec_mod, styleframe
+from . import audit, blender_runner, compare, env, project, runs, spec as spec_mod, styleframe
 from .providers import get_provider
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,6 +49,36 @@ def cmd_render(args):
     # are part of the scene, and the snapshot in the take must be what rendered.
     blender_runner.render(take / "scene.json", take / "preview.mp4", verbose=args.verbose)
     print(f"[render] take {_rel(take)}")
+    return 0
+
+
+def cmd_audit(args):
+    """Measure the baked camera move: speed, stalls, and clearance to everything.
+
+    Free, instant, and answers what a grey contact sheet cannot -- a camera
+    inside a car looks like nothing at all from inside it. Exits non-zero on a
+    penetration so it can gate a render.
+    """
+    scene, target = _load(args.scene)
+    lines, hits = audit.report(scene, closest=args.closest)
+    print(f"[audit] {target.label}")
+    for line in lines:
+        print("  " + line)
+
+    if hits:
+        print(
+            f"error: the camera passes through {len(hits)} object(s)",
+            file=sys.stderr,
+        )
+        return 1
+    tightest = audit.clearances(scene, audit.path(scene))
+    if args.min_clearance and tightest and tightest[0]["distance"] < args.min_clearance:
+        print(
+            f"error: closest approach {tightest[0]['distance']:.2f} m to "
+            f"{tightest[0]['name']}, under the {args.min_clearance:.2f} m asked for",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 
@@ -344,6 +374,7 @@ def main(argv=None):
 
     for name, handler, help_text in [
         ("check", cmd_check, "validate a scene spec without rendering"),
+        ("audit", cmd_audit, "measure the camera move: speed, stalls, clearance"),
         ("render", cmd_render, "Blender -> a new take with preview.mp4"),
         ("generate", cmd_generate, "blockout -> final.mp4 via the video model"),
         ("all", cmd_all, "render, then generate"),
@@ -380,6 +411,16 @@ def main(argv=None):
                 help="also pull N stills from the result and build a comparison sheet",
             )
             p.add_argument("--style", help="style reference image (default: <take>/styleframe.png)")
+        if name == "audit":
+            p.add_argument(
+                "--closest", type=int, default=8,
+                help="how many objects to list, tightest first (default: 8)",
+            )
+            p.add_argument(
+                "--min-clearance", type=float, default=0.0,
+                help="fail if anything comes closer than this, in metres. "
+                "A penetration always fails regardless.",
+            )
         if name == "frames":
             p.add_argument(
                 "--count", type=int, default=5,
