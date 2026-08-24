@@ -42,25 +42,45 @@ would invent its own composition and pull against the blockout instead.
 </tr>
 </table>
 
-```
-scenes/*.json  ──▶  Blender (headless)  ──▶  out/<name>/preview.mp4
-                                             out/<name>/frames/*.png
-                                                    │
-                                     Supabase Storage (signed URL, then deleted)
-                                                    │
-                                                    ▼
-                                   Seedance via PiAPI (omni_reference)
-                                                    │
-                                                    ▼
-                                            out/<name>/final.mp4
-```
+## Three strands
 
-The upload hop is not optional: Seedance takes reference **videos** by URL only.
-Images and audio can go inline as base64, video cannot. The blockout goes to your
-own bucket under a random key, is passed as a signed URL with a TTL, and is
-deleted as soon as the job finishes — including when it fails.
+The project is early, and it is deliberately three things at once, because
+separately none of them is worth much.
+
+**1 — AI rendering, from blocking to generation.** Not a prompt-to-video toy: a
+shot that starts as deliberate blocking and camera work, and ends as a generated
+clip that obeys them.
+
+**2 — Agents that drive Blender.** Scene, camera, lighting, render — built by an
+agent, headless, no GUI in the loop. This works because the scene is a set of
+configs. A spec is a far better target for a model than a viewport: it can be
+written, checked, diffed and rewritten, and a wrong value is visible as text
+before anything renders.
+
+**3 — Studio pipeline infrastructure, with principles borrowed from IT.** The
+part with the longest reach, and the subject of the next section.
 
 ## Why this exists
+
+The generated clip is the visible half. The question underneath is older and
+bigger: **can a film production pipeline be versioned the way software is?**
+
+A studio pipeline already has structure — sequences, shots, tasks, publishes.
+What it does not have is history you can read. **Commits in CG are effectively
+binary.** You open ShotGrid, upload a render or a link to a file, write a
+comment, and that is the whole record. You can see that `v012` exists and that it
+looks different from `v011`. You cannot see *what changed*. That single missing
+capability costs the rest of the model:
+
+- **No diff.** "The camera is wrong now" starts a conversation, not a lookup.
+- **No blame.** Nobody can say which change introduced the problem, or why it
+  was made.
+- **No revert.** Rolling back means restoring a whole file, losing every
+  unrelated change that rode along in it.
+- **No branch, no merge.** Two looks cannot exist at once, and two artists
+  cannot touch one shot without one of them waiting.
+- **No bisect.** A shot that regressed over twelve publishes is debugged by
+  opening all twelve.
 
 The generated clip is the visible half. The question underneath is older and
 bigger: **can a film production pipeline be versioned the way software is?**
@@ -97,18 +117,62 @@ produced it, and why nothing is ever overwritten. An output you cannot trace bac
 to a spec is an output you cannot trust.
 
 **Where this honestly stops.** Not everything in a pipeline reduces to text.
-Geometry caches, simulations, textures and plates are genuinely large and
-genuinely binary; no amount of enthusiasm makes an Alembic file diffable. The
-claim is narrower and, I think, more useful: version the *recipe*, not the
-result. The parts of a shot that are decisions — layout, camera, timing,
+Models, caches, simulations, textures and plates are large and binary; no amount
+of enthusiasm makes an Alembic file diffable. Though only *partly* binary, given
+the right approach — a procedural asset is a recipe with parameters, and a
+recipe is text. The claim is the narrow one: **version the recipe, not the
+result.** The parts of a shot that are decisions — layout, camera, timing,
 intent — are exactly the parts that are text-shaped, and they are also the parts
 people argue about. This repo is the smallest end-to-end test of that idea: a
 shot authored as config, rendered, generated, and reviewable as a diff.
 
-Two lines of work follow from it, and both belong here rather than in separate
-repos: **agents that author 3D scenes** (a spec is a much better target for a
-model than a GUI), and **the production pipeline itself** — takes, generations,
-provenance, comparison.
+## Who this is for
+
+Not the large studio with a pipeline department and a decade of tooling. It is
+for the places where the cost of the missing diff is felt directly:
+
+**Small studios that want agents in production now.** No pipeline team, no
+budget for one, and the most to gain from a shot being a file an agent can write
+and a human can review.
+
+**Previs, and the tender stage of large studios.** Both are judged on how fast an
+idea becomes something watchable, and both routinely throw the result away. That
+is exactly where a cheap, versioned, regenerable shot beats a careful one.
+
+**And the oldest problem in the room: the art director who cannot say what they
+want.** Not a complaint — it is genuinely easier to react than to specify. But
+the cost is paid in weeks, by the people iterating blind. If they can talk to an
+agent and watch finished-looking AI renders come back at the blocking stage, the
+specification happens where it is cheap, against something concrete, before real
+production is committed.
+
+## Where this goes
+
+The end state is a full pipeline platform for a small studio: idea → blocking →
+generation → edit, with logs, provenance and time analysis in the same substrate
+as the work. Not there. What exists today is one honest vertical slice: a shot
+authored as JSON, rendered locally, generated with structure held, and every take
+traceable to the spec that produced it.
+
+## How it fits together
+
+```
+scenes/*.json  ──▶  Blender (headless)  ──▶  out/<name>/preview.mp4
+                                             out/<name>/frames/*.png
+                                                    │
+                                     Supabase Storage (signed URL, then deleted)
+                                                    │
+                                                    ▼
+                                   Seedance via PiAPI (omni_reference)
+                                                    │
+                                                    ▼
+                                            out/<name>/final.mp4
+```
+
+The upload hop is not optional: Seedance takes reference **videos** by URL only.
+Images and audio can go inline as base64, video cannot. The blockout goes to your
+own bucket under a random key, is passed as a signed URL with a TTL, and is
+deleted as soon as the job finishes — including when it fails.
 
 ## Why this shape
 
