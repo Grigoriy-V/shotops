@@ -154,6 +154,18 @@ as the work. Not there. What exists today is one honest vertical slice: a shot
 authored as JSON, rendered locally, generated with structure held, and every take
 traceable to the spec that produced it.
 
+## Prior art
+
+The idea of a diffable, branchable JSON previs project is not new —
+[`blockout`](https://github.com/wassermanproductions/blockout) (Apache-2.0) got
+there first, from the GUI side. What is distinct here is that the spec is written
+by an agent, validated before anything renders, and every output traces back to
+the exact spec that produced it.
+
+[`docs/research/`](docs/research/) carries the survey: who else is building this,
+which models actually honour a blockout, and why agentic Blender work splits into
+MCP for the viewport and specs for the pipeline.
+
 ## How it fits together
 
 ```
