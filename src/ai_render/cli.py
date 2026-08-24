@@ -298,6 +298,7 @@ def _extract(video, out_dir, count, verbose):
     if not video.exists():
         print(f"error: no video at {_rel(video)}", file=sys.stderr)
         return 2
+    out_dir = Path(out_dir).resolve()
     cmd = [
         blender_runner.find_blender(), "-b", "-noaudio", "-P", str(EXTRACT_SCRIPT),
         "--", str(video), str(out_dir), str(count),
@@ -308,7 +309,12 @@ def _extract(video, out_dir, count, verbose):
         sys.stderr.write(proc.stderr)
     if proc.returncode != 0:
         raise RuntimeError(f"frame extraction failed with code {proc.returncode}")
-    print(f"[extract] {count} stills -> {_rel(out_dir)}")
+    # Blender exits 0 whether or not it wrote anything, so check rather than
+    # announce: this is the step that used to report success into the void.
+    made = sorted(out_dir.glob("frame_*.png"))
+    if not made:
+        raise RuntimeError(f"extraction reported success but produced nothing in {out_dir}")
+    print(f"[extract] {len(made)} stills -> {_rel(out_dir)}")
     return 0
 
 

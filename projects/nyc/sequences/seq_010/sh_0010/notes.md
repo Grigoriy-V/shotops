@@ -125,19 +125,69 @@ axis at 6 m range, enormous on a 20 mm lens. It settles now about 5 m above the
 deck, aimed 4° down, with the roof objects moved wide and back so they clip the
 frame edges and the back parapet lays along the bottom.
 
+## First generation, 2026-08-25
+
+Run by hand: `preview_v002` (6de41e) as `@video1`, a comic-book style still as
+`@image1`, `seedance-2-mini` at 480p, 10s. Result in
+[render/](render), style still in [styleframes/](styleframes), the two compared
+frame for frame at matched times in
+`artifacts/..._sheet_v005_vs_render_v001.jpg`.
+
+**The prompt furnished the world past the edge of the geometry.** This was the
+open question in the brief, and the answer is yes. There is no bay, no bridge,
+no sunset and no distant skyline in the blockout — above the roof line there is
+literally nothing — and the result has all four, held steady for the whole 3.4 s
+of the reveal. The rooftop backdrop did not have to be built.
+
+**Structure and timing held.** 241 frames, the crest lands where the blockout
+puts it, the weave and the bank survive, and the water tower primitive comes back
+as an actual NYC water tower on legs. The facade rhythm was worth every ledge:
+the eight bands became window rows, and the climb reads.
+
+**The middle came apart, and it came apart on exactly the two objects placed to
+make it work.** From roughly t = 20% to t = 40% two raw white boxes sit in the
+road, untextured, while the buildings, road, kerb and lamp posts around them are
+fully rendered. They are `car_03` and `car_06` — the two mid-road cars standing
+at the weave peaks, the closest geometry in the shot at 0.85 m.
+
+The same cubes read as cars perfectly well in the opening seconds, at twenty
+metres, in a row along the kerb. The difference is proximity: at twenty metres
+the model infers "car" from context — street, kerb, a row of similar shapes — and
+supplies one. At under a metre, filling a third of frame, seen corner-on, there
+is no context left and nothing in the silhouette to infer from. A 1.9 × 4.6 × 1.5
+box has no wheels, no cabin, no glass. So the model rendered what it was actually
+shown: a box.
+
+Worth stating as a rule, because it cuts against the instinct that a blockout can
+stay crude: **a primitive only has to look like its object at the distance it is
+seen from.** Distance buys inference; proximity spends it. The things that
+survived close range here — the wall, the kerb, the parapet, the poles — are the
+ones whose primitive shape *is* their real shape.
+
+Two ways out, and they are not equivalent. Give the near cars enough silhouette
+to survive a close pass — a low body, a smaller cabin box, four cylinders — which
+is maybe five primitives each and only needed on the ones the camera actually
+passes. Or stop passing that close to objects that are being faked. The first
+keeps the beat that makes the street run work; the second gives it up.
+
+**The style still was not derived from a blockout frame,** and it shows in a way
+worth recording: its composition is a wide street with open sky, nothing like the
+narrow dead-end of frame one. It did no harm — `@video1` governed structure and
+`@image1` only look, which is the split working exactly as designed — but it
+means this run says nothing yet about how far a *matched* style still would carry.
+That test is still ahead.
+
 ## Open
 
 - **Roll sign** unverified, as above.
 - **The prompt says "shot on 24mm anamorphic"** while the camera is 20 mm, and
   naming a lens at all is camera vocabulary in a prompt where the camera is
   already geometry. Both worth resolving before anything paid runs.
-- **The bay, the bridge and the sunset are not built** — deliberately, as the
-  experiment described in the brief. This was cheap to defer when the reveal was
-  1.4 s long. At 3.4 s it is a third of the shot pointed at an empty frame: above
-  the roof line there is no geometry at all, so there is nothing for the model to
-  hold and nothing for a style still to anchor to. Either a distant silhouette
-  band gets built, or the shot ends on the roof rather than on the view. Not a
-  decision to take quietly.
+- ~~The bay, the bridge and the sunset are not built~~ — **settled by the first
+  generation.** The prompt supplied all of it and held it for the full reveal. No
+  silhouette band needs building.
+- **The two mid-road cars need a silhouette, or the camera needs to stop passing
+  them at 0.85 m.** The one thing that actually failed. See above.
 - **The path audit is a throwaway script.** It found all three car penetrations
   and it does not live in the repository. It should be a command.
 - **Nothing generated yet.** No paid call has been made for this shot.

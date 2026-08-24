@@ -102,6 +102,12 @@ a time and stop at every key; a flight authored with `ease` arrives, halts and
 sets off again at each one. Read the values you are writing as a curve, not as a
 list of positions.
 
+**Detail what the camera gets close to, and only that.** A primitive has to look
+like its object at the distance it is seen from, no further. Distance buys
+inference — a box in a row along a kerb reads as a parked car because the street
+says so. Proximity spends it: the same box at a metre, filling frame, comes back
+from the model as a box.
+
 **Look before believing.** A spec you have not rendered is a guess. `views` is
 cheap and answers the question a frame cannot — where everything is, and where
 the camera actually goes.

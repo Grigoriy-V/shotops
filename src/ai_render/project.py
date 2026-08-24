@@ -46,9 +46,11 @@ KNOWN_ROLES = {"variant", "asset"}
 # the file name too, because each kind counts its own versions: "preview v003" is
 # the third preview, which is the only thing a version number is good for.
 ARTIFACT_DIRS = {
-    "preview": "preview",
-    "still": "frames",
-    "views": "artifacts",
+    "preview": "preview",       # the grey blockout
+    "still": "frames",          # individual blockout frames, input to a styleframe
+    "styleframe": "styleframes",  # the look reference the generation is given
+    "render": "render",         # what the video model returned -- the finished shot
+    "views": "artifacts",       # working record
     "sheet": "artifacts",
 }
 

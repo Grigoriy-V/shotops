@@ -14,7 +14,10 @@ import bpy
 
 def main(video_path, out_dir, count):
     video_path = str(Path(video_path).resolve())
-    out_dir = Path(out_dir)
+    # Absolute, always: Blender resolves a relative render path against the blend
+    # file, and with no blend file that lands at the drive root -- writing
+    # C:\projects\... while reporting success.
+    out_dir = Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # A movie clip is the reliable way to read a video's true dimensions and
