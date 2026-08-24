@@ -20,19 +20,27 @@ Left is rendered locally and costs nothing. The only authored input is
 primitives, a 32mm camera that dollies from 13.7m to 8.4m while dropping from
 6.0m to 1.8m, and a prompt describing surfaces. 5s, 480p.
 
-<img src="docs/styleframe.jpg" width="380" align="right" />
-
-Colour and light do not come from the prompt alone. A **style still** carries
-them, and it is made by restyling the blockout's own first frame — same camera,
-same framing, same objects, new surfaces. That keeps the two references in
-agreement: the blockout owns everything spatial, the still owns everything about
-look. Text-to-image would invent its own composition and pull against the
-blockout.
-
-<br clear="right" />
-
 Full quality, not palette-reduced: [`blockout.mp4`](docs/blockout.mp4) (237 KB),
 [`final.mp4`](docs/final.mp4) (1.3 MB).
+
+### The second reference
+
+<table>
+<tr>
+<td width="42%"><img src="docs/styleframe.jpg" alt="style still" /></td>
+<td valign="top">
+
+Colour and light do not come from the prompt alone. A **style still** carries
+them — and it is made by restyling the blockout's own first frame, so the camera,
+the framing and the objects are already identical.
+
+That keeps the two references from arguing: the blockout owns everything
+spatial, the still owns everything about look. A picture generated from text
+would invent its own composition and pull against the blockout instead.
+
+</td>
+</tr>
+</table>
 
 ```
 scenes/*.json  ──▶  Blender (headless)  ──▶  out/<name>/preview.mp4
