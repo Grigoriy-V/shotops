@@ -7,29 +7,32 @@ revert, the way software does.
 
 ## The first artifact
 
-![blockout, style still, result](docs/hero.jpg)
+| in — Blender blockout | out — Seedance 2 mini |
+| --- | --- |
+| ![blockout](docs/blockout.gif) | ![result](docs/final.gif) |
 
-One shot, end to end: a JSON spec → a Blender blockout → a 5s clip from Seedance
-2 mini at 480p, with a style still owning material and light.
-[`scenes/demo_room.json`](scenes/demo_room.json) is the entire authored input:
-127 lines holding ten primitives, a 32mm camera that dollies from 13.7m to 8.4m
-while dropping from 6.0m to 1.8m, and a look prompt.
+Same dolly, same silhouette, same screen position, same raking light slot. Only
+material, lighting and colour changed — which is the whole claim, and the two
+clips above are the form of it that can actually be falsified.
 
-The claim this repo makes is structural adherence, so here is the evidence in the
-form that can actually falsify it — both clips sampled at **identical normalised
-times**, blockout on top, result below:
+Left is rendered locally and costs nothing. The only authored input is
+[`scenes/demo_room.json`](scenes/demo_room.json): 127 lines holding ten
+primitives, a 32mm camera that dollies from 13.7m to 8.4m while dropping from
+6.0m to 1.8m, and a prompt describing surfaces. 5s, 480p.
 
-![frame-for-frame comparison](docs/compare.jpg)
+<img src="docs/styleframe.jpg" width="380" align="right" />
 
-The dolly, the cube's silhouette and screen position, the column behind it and
-the raking light slot all track. What changed is only what was supposed to
-change: material, lighting and colour.
+Colour and light do not come from the prompt alone. A **style still** carries
+them, and it is made by restyling the blockout's own first frame — same camera,
+same framing, same objects, new surfaces. That keeps the two references in
+agreement: the blockout owns everything spatial, the still owns everything about
+look. Text-to-image would invent its own composition and pull against the
+blockout.
 
-Both clips are in [`docs/`](docs/) — [`blockout.mp4`](docs/blockout.mp4) (237 KB)
-and [`final.mp4`](docs/final.mp4) (1.3 MB). The comparison sheet is generated,
-not assembled by hand: `python -m ai_render compare scenes/demo_room.json`. That matters,
-because eyeballing two clips at *different* moments reads as adherence when there
-is none — a mistake already made once here, and the reason the tool exists.
+<br clear="right" />
+
+Full quality, not palette-reduced: [`blockout.mp4`](docs/blockout.mp4) (237 KB),
+[`final.mp4`](docs/final.mp4) (1.3 MB).
 
 ```
 scenes/*.json  ──▶  Blender (headless)  ──▶  out/<name>/preview.mp4
