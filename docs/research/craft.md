@@ -99,14 +99,14 @@ authoring a scene.
   the cheaper and more robust arrangement than a style still per shot.
 - **A copyright refusal is not necessarily about the reference.** Three frames
   from a released feature were rejected twice through the API — *"rejected due
-  to copyright restrictions"* — on two different model tiers, having been
-  accepted twice through the same vendor's playground. The variable turned out
-  to be neither the images nor the tier but `service_mode`: pinned to `public`
-  it was refused, left empty as the playground leaves it, the same request
-  completed. One success is not proof, and the lesson is not that the filter can
-  be talked around. It is that **a content verdict is still an API response, and
-  worth diffing against a request that worked before it is read as a judgement
-  about the content.**
+  to copyright restrictions"* — on two different tiers, having been accepted
+  twice through the same vendor's playground, and then accepted on a third
+  attempt that differed only in `service_mode`. One pass against two refusals is
+  more likely noise in the filter than a mechanism, and it is recorded as noise.
+  The transferable part is the habit, not the field: **a content verdict is
+  still an API response. Diff it against a request that worked before reading it
+  as a judgement about the content — and do not assume the same inputs get the
+  same verdict twice.**
 - **Finding out is free, in one direction.** A rejected task freezes its points
   and restores them; only a generation that completes is billed. That makes
   probing what gets refused cost nothing — and confirming what gets accepted

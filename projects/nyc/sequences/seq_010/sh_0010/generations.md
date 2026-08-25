@@ -524,16 +524,19 @@ record shows and what the docs describe as the default. `"public"` pins PAYG.
 Pinning it was this repo's own addition, never asked for by the API, and it is
 the difference between two refusals and a finished shot.
 
-**Held with care, because it is n = 1 on the success side.** Two rejections
-against one success is not proof that moderation is bound to the billing mode,
-and content filters are entitled to be probabilistic. What can be said is that
-005 and 006 differ in this field and nothing else — same tier, same blockout,
-same references, same prompt, same uploader, same day — and that the two
-refusals before it were consistent rather than flaky.
+**And it is probably not the explanation.** The user's read, taken as the
+project's position: *`service_mode` may well be coincidence, and what actually
+happened is randomness and imprecision in Seedance's content blocking.* Two
+refusals against one success is not evidence that moderation is bound to the
+billing mode. It is one clean single-variable difference and one lucky pass, and
+those look identical from here.
 
-Confirming it costs money in the direction that matters: a re-run pinned back to
-`public` is free **if it is refused**, and bills 10,500,000 if it is not. Left
-undone deliberately.
+The field stays empty because empty is the documented default and what the
+playground sends — that much needs no theory. The theory is not settled and is
+not being chased: **content-filter behaviour gets tested on real future shots,
+where a refusal costs a shot rather than an experiment.** Confirming it
+deliberately would also cost in the wrong direction: a re-run pinned back to
+`public` is free if refused and bills 10,500,000 if not.
 
 ### What the result looks like
 
@@ -543,6 +546,34 @@ as a yellow taxi with a roof sign and a deep red saloon, fully rendered at the
 wall climb reads as a climb, the parapet as a parapet, and the rooftop reveal
 brings the bay, the suspension bridge and the far skyline out of the prompt
 alone, exactly as 003 did.
+
+### What broke: the water tank became a building
+
+In the last seconds the blockout has a cylinder on the right filling a third of
+frame — the rooftop water tank, and the closest thing in shot at that point. The
+result puts a brick building with windows there instead.
+
+The shot *does* contain water towers: two of them, centre and left, on legs with
+pitched caps, exactly as a comic-book New York rooftop should have. The model put
+them where its look references had them. It did not put one where the geometry
+said, because nothing told it that the cylinder was one.
+
+Three sources could have said so and none did. **The prompt never mentions a
+water tank** — it describes light, haze and the bay, per the convention that the
+prompt owns surfaces. **A cylinder is the silhouette of a great many things** —
+a tank, a tower, a chimney, a rotunda. **And the look references are of other
+places**, deliberately, since that is what stopped them contradicting the
+blockout about the road.
+
+The rule that follows is now in
+[craft/modelling.md](../../../../docs/craft/modelling.md#how-much-detail-and-where):
+a close object survives when the prompt names it, the blocking is specific
+enough for the silhouette to say what it is, and a look reference contains one.
+Miss any of the three and the result is not so much wrong as unpredictable.
+
+Worth noting what this is *not*: it is not the 001 failure. That was distance —
+a box too far from anything that explained it. Here the object was as close as
+anything gets. Proximity does not help when nothing says what the shape is.
 
 ### What this settles about the pipeline
 
@@ -562,3 +593,12 @@ this run can be read backwards from a file on disk.
 | 006 | `seedance-2-fast-less-restriction` | 10 s in + 10 s out | 10,500,000 | 525,000 |
 
 The held figure in 005 was the tier's true price, and 006 charged exactly it.
+
+### What was deliberately not changed
+
+`shot.json` still names `seedance-2-fast`. 006 ran on `-less-restriction` through
+a `--model` flag, so **the config as committed does not reproduce this take
+exactly** — it would send the cheaper tier. That is on purpose: if the refusals
+were noise rather than the tier, `fast` is the honest default and 9% cheaper, and
+006 gives no reason to believe otherwise. The flag is how a run departs from the
+config; this entry is the record of which one did.

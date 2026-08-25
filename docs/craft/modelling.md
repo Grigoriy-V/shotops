@@ -64,6 +64,25 @@ around them rendered.*
 shot has fifty buildings that are single scaled cubes, and they are fine,
 because nothing gets within twenty metres of them.
 
+**Three things decide whether a close object survives, and all three have to
+hold.** A clear instruction naming it in the prompt; blocking specific enough
+that its silhouette says what it is; and a look reference that actually contains
+that object. Miss any one and the result is not wrong so much as *unpredictable* —
+the model fills the gap with something plausible, and plausible is not the same
+as yours.
+
+*Evidence: [generation 006](../../projects/nyc/sequences/seq_010/sh_0010/generations.md),
+where the rooftop water tank — a bare cylinder filling a third of frame in the
+last seconds — came back as a brick building with windows. All three conditions
+failed at once: the prompt never mentions a water tank, a cylinder is the
+silhouette of a great many things, and the three look references are of other
+places. The model did produce water towers in that shot; it put them where its
+references had them, not where the geometry did.*
+
+The reason this is worth stating as its own rule rather than folding into the
+one above: **distance was not the problem here.** The tank was the closest thing
+in frame. What it lacked was any of the three sources that say what a shape is.
+
 **A featureless plane filling frame is where the model starts inventing.** Two
 seconds of blank wall during a climb came back as guesswork; eight ledges and
 three piers at 4 m intervals — still nothing but scaled cubes — came back as

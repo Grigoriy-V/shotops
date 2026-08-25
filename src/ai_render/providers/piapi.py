@@ -62,11 +62,13 @@ KNOWN_TASK_TYPES = [
 
 # Empty means "whatever the workspace is set to", which is what the playground
 # sends and what the docs describe as the default. "public" pins PAYG and
-# "private" pins HYA. Pinning it to public was this repo's own addition, never
-# asked for by the API -- and it was not free: two identical requests were
-# refused as "rejected due to copyright restrictions" with it set, and the same
-# request completed with it empty. One success is not a proof of mechanism, so
-# the field stays overridable; the default is what the playground sends.
+# "private" pins HYA. Pinning it to public was this repo's own addition and was
+# never asked for by the API, which is reason enough to stop.
+#
+# Two requests were refused on copyright with it set and an identical one
+# completed with it empty, but that is one pass against two refusals and the
+# likelier reading is noise in the provider's content filter, not a mechanism.
+# Recorded rather than believed.
 SERVICE_MODE = os.environ.get("AI_RENDER_PIAPI_SERVICE_MODE", "")
 
 RESOLUTIONS = {"480p", "720p", "1080p"}
