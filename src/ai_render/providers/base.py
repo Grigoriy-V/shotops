@@ -181,4 +181,8 @@ def get_provider(name, model=None):
         from .cometapi import CometSeedance
 
         return CometSeedance(model=model)
-    raise ValueError(f"unknown provider {name!r} (available: piapi, comet)")
+    if name in ("h3", "h3zero"):
+        from .h3zero import H3Zero
+
+        return H3Zero(sampling_profile=model)
+    raise ValueError(f"unknown provider {name!r} (available: piapi, comet, h3zero)")

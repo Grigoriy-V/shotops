@@ -714,9 +714,12 @@ check("no url found -> None", CometSeedance._extract_url({"status": "completed"}
 
 print("providers -- registry and piapi guards")
 from ai_render.providers.piapi import PiapiSeedance  # noqa: E402
+from ai_render.providers.h3zero import H3Zero, validate_h3_prompt  # noqa: E402
 
 check("default provider is piapi", get_provider("piapi").name == "piapi/seedance", True)
 check("comet still reachable", get_provider("comet").name == "cometapi/seedance", True)
+check("h3zero is registered", get_provider("h3zero").name == "h3zero/minimax-h3", True)
+check("h3 alias is registered", get_provider("h3").model, "turbo_4")
 
 print("providers -- model variant precedence")
 os.environ.pop("AI_RENDER_PIAPI_TASK_TYPE", None)
@@ -744,7 +747,7 @@ except ValueError:
 # call time, i.e. after the blockout has already been uploaded.
 import inspect  # noqa: E402
 
-for provider_name in ("piapi", "comet"):
+for provider_name in ("piapi", "comet", "h3zero"):
     params = inspect.signature(get_provider(provider_name).generate).parameters
     check(f"{provider_name} accepts style_images", "style_images" in params, True)
     # The CLI hands over a callback that writes the task id into the manifest
@@ -752,6 +755,84 @@ for provider_name in ("piapi", "comet"):
     # blockout has been uploaded; a provider that accepts it and never calls it
     # loses the only handle on a paid generation.
     check(f"{provider_name} accepts on_task", "on_task" in params, True)
+
+print("h3zero -- prompt grammar and direct multipart job")
+validate_h3_prompt("Keep <Video 1>; use <Picture 1>.", 1)
+for label, prompt, pictures in [
+    ("lowercase tag", "Keep <video 1>.", 0),
+    ("missing video", "Use <Picture 1>.", 1),
+    ("zero picture", "Keep <Video 1>; use <Picture 0>.", 1),
+    ("unbound picture", "Keep <Video 1>; use <Picture 2>.", 1),
+    ("unbound audio", "Keep <Video 1>; hear <Audio 1>.", 0),
+]:
+    try:
+        validate_h3_prompt(prompt, pictures)
+        failures.append(f"h3zero {label}: expected ValueError")
+        print(f"  FAIL h3zero rejects {label}")
+    except ValueError:
+        print(f"  ok   h3zero rejects {label}")
+
+h3_events = []
+h3_captured = {}
+h3 = H3Zero(sampling_profile="turbo_4", poll_interval=0.0)
+
+
+def _h3_request(method, path, form=None, files=None):
+    if method == "POST" and path == "/api/jobs":
+        h3_events.append("submit")
+        h3_captured["prompt"] = form["prompt"]
+        h3_captured["config"] = json.loads(form["config"])
+        h3_captured["files"] = files
+        return 202, {"id": "h3-job-42"}
+    if method == "GET":
+        h3_events.append("poll")
+        return 200, {"id": "h3-job-42", "status": "completed", "progress": {"phase": "done"}}
+    if method == "POST" and path.endswith("/acknowledge"):
+        h3_events.append("ack")
+        return 204, None
+    raise AssertionError((method, path))
+
+
+def _h3_download(path, out_path):
+    h3_events.append("download")
+    out = Path(out_path)
+    out.write_bytes(b"fake-h3-mp4")
+    return out
+
+
+h3._request = _h3_request
+h3._download = _h3_download
+with _tempfile.TemporaryDirectory() as tmp:
+    tmp = Path(tmp)
+    blockout = tmp / "blockout.mp4"
+    picture = tmp / "look.png"
+    blockout.write_bytes(b"mp4")
+    picture.write_bytes(b"png")
+    h3.generate(
+        blockout,
+        {
+            "full_prompt": "Seedance prompt must not be reused",
+            "reference_mode": "video",
+            "resolution": "480p",
+            "aspect_ratio": "16:9",
+            "duration": 5,
+            "h3zero": {
+                "sampling_profile": "turbo_4",
+                "full_prompt": "Keep <Video 1>; use <Picture 1> for appearance.",
+            },
+        },
+        tmp / "final.mp4",
+        style_images=[picture],
+        on_task=lambda task_id: h3_events.append(f"id:{task_id}"),
+    )
+
+check("h3 task id is saved before polling", h3_events[:3], ["submit", "id:h3-job-42", "poll"])
+check("h3 acknowledges only after download", h3_events[-2:], ["download", "ack"])
+check("h3 uses its own verbatim prompt", h3_captured["prompt"], "Keep <Video 1>; use <Picture 1> for appearance.")
+check("h3 submits references mode", h3_captured["config"]["mode"], "references")
+check("h3 submits native 480p canvas", (h3_captured["config"]["width"], h3_captured["config"]["height"]), (864, 480))
+check("h3 reference upload order is stable", [item[0] for item in h3_captured["files"]], ["reference_0", "reference_1"])
+check("h3 blockout is Video 1", h3_captured["config"]["references"][0]["kind"], "video")
 
 try:
     get_provider("comet").generate(

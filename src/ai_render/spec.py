@@ -164,14 +164,28 @@ def validate(spec):
         # An asset is scratch work -- a car on a grey plane, checked and rendered
         # locally, never generated -- so it inherits the project's generation
         # defaults without ever needing a prompt to go with them.
-        if role != "asset" and not generation.get("prompt") and not generation.get("full_prompt"):
+        h3zero = generation.get("h3zero")
+        if h3zero is not None and not isinstance(h3zero, dict):
+            _fail("generation.h3zero", "must be an object")
+        h3_prompt = h3zero.get("full_prompt") if isinstance(h3zero, dict) else None
+        if role != "asset" and not generation.get("prompt") and not generation.get("full_prompt") and not h3_prompt:
             _fail(
                 "generation.prompt",
                 "required to run the video generation step -- or 'full_prompt' "
-                "to send a complete prompt of your own, contract included",
+                "to send a complete prompt of your own, contract included; H3Zero may use "
+                "generation.h3zero.full_prompt",
             )
         if "full_prompt" in generation and not str(generation["full_prompt"]).strip():
             _fail("generation.full_prompt", "must be a non-empty string when present")
+        if isinstance(h3zero, dict):
+            if not isinstance(h3_prompt, str) or not h3_prompt.strip():
+                _fail("generation.h3zero.full_prompt", "must be a non-empty string")
+            profile = h3zero.get("sampling_profile", "turbo_4")
+            if profile not in {"turbo_4", "turbo_8", "spectrum", "base"}:
+                _fail(
+                    "generation.h3zero.sampling_profile",
+                    "must be turbo_4, turbo_8, spectrum, or base",
+                )
         mode = generation.get("reference_mode", "video")
         if mode not in KNOWN_REFERENCE_MODES:
             _fail(

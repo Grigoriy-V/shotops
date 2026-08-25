@@ -35,6 +35,45 @@ To use the CometAPI provider instead, set `COMETAPI_KEY` and pass
 `--provider comet` — but read the section above first, because it will not
 honour your camera.
 
+### H3Zero on Modal (experimental)
+
+H3Zero is a self-hosted MiniMax H3 route and accepts the blockout plus look
+references directly as multipart uploads. It does not use Supabase. Deploy the
+endpoint with Modal proxy authentication, set its URL, and use the local Modal
+profile for an interactive test:
+
+```ini
+AI_RENDER_H3ZERO_URL=https://<workspace>--minimax-h3-web.modal.run
+AI_RENDER_H3ZERO_AUTH=modal-cli
+AI_RENDER_H3ZERO_MODAL_PYTHON=.tools\h3zero\.venv\Scripts\python.exe
+```
+
+```powershell
+$env:PYTHONPATH="src"
+python -m ai_render generate projects/nyc/sequences/seq_010/sh_0010/street_a.json `
+  --provider h3zero --extract
+```
+
+H3Zero currently produces 480p in `16:9` or `9:16`. The cheapest smoke-test
+profile is `turbo_4`; `turbo_8`, `spectrum`, and `base` are also available.
+`--model turbo_8` is a temporary override. A repeatable setting belongs in the
+scene hierarchy:
+
+```jsonc
+"generation": {
+  "h3zero": {
+    "sampling_profile": "turbo_4",
+    "full_prompt": "Keep <Video 1> ... use <Picture 1> for appearance ..."
+  }
+}
+```
+
+H3 reference tags are case-sensitive and differ from Seedance: `<Video 1>` and
+`<Picture 1>`. The H3 prompt is therefore separate; the provider never rewrites
+or reuses a tested top-level `full_prompt`. The endpoint is called through
+`modal curl` by default, so the Modal account token stays in the Modal profile.
+For unattended use, configure a dedicated Modal proxy bearer token instead.
+
 ### Choosing the model
 
 Defaults to **`seedance-2-mini`**, the iteration tier. Three ways to change it,

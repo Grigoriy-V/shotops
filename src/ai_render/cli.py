@@ -75,6 +75,16 @@ def cmd_check(args):
                 file=sys.stderr,
             )
             return 1
+    h3zero = generation.get("h3zero")
+    if h3zero:
+        from .providers.h3zero import validate_h3_prompt
+
+        try:
+            validate_h3_prompt(h3zero.get("full_prompt"), len(references))
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print("ok -- H3Zero prompt binds <Video 1> and its picture references")
     return 0
 
 
@@ -268,7 +278,12 @@ def cmd_generate(args):
     # the scene's own settings once the shot is right.
     if args.resolution:
         generation = {**generation, "resolution": args.resolution}
-    model = args.model or generation.get("model")
+    is_h3 = args.provider in ("h3", "h3zero")
+    h3_config = generation.get("h3zero") or {}
+    if is_h3 and not isinstance(h3_config, dict):
+        print("error: generation.h3zero must be an object", file=sys.stderr)
+        return 2
+    model = args.model or (h3_config.get("sampling_profile") if is_h3 else generation.get("model"))
 
     try:
         style_images = _style_references(args.style, generation, target, take)
@@ -278,7 +293,8 @@ def cmd_generate(args):
 
     # Checked again here, not only in `check`: --style can change the count out
     # from under a verbatim prompt, and this is the last free moment.
-    unbound = unbound_image_tags(generation.get("full_prompt") or "", len(style_images))
+    checked_prompt = h3_config.get("full_prompt", "") if is_h3 else generation.get("full_prompt", "")
+    unbound = unbound_image_tags(checked_prompt, len(style_images)) if not is_h3 else []
     if unbound:
         named = ", ".join(f"Image {n}" for n in unbound)
         print(
@@ -290,7 +306,8 @@ def cmd_generate(args):
 
     provider = get_provider(args.provider, model=model)
     resolved_model = getattr(provider, "task_type", None) or getattr(provider, "model", "default")
-    out_dir = runs.new_generation(take, resolved_model, generation.get("resolution", "720p"))
+    resolved_resolution = getattr(provider, "resolution", None) or generation.get("resolution", "720p")
+    out_dir = runs.new_generation(take, resolved_model, resolved_resolution)
 
     runs.write_manifest(
         out_dir,
@@ -299,7 +316,7 @@ def cmd_generate(args):
         provider=provider.name,
         model=resolved_model,
         generation=generation,
-        uploader=upload.configured_name(),
+        uploader=getattr(provider, "uploader", None) or upload.configured_name(),
         style_references=[str(_rel(p)) for p in style_images],
         started_at=datetime.now(timezone.utc).isoformat(),
     )
@@ -491,8 +508,8 @@ def main(argv=None):
             )
             p.add_argument(
                 "--model",
-                help="model variant within the provider (PiAPI task type, e.g. seedance-2). "
-                "Beats the scene's 'model' field, which beats AI_RENDER_PIAPI_TASK_TYPE.",
+                help="model variant within the provider: PiAPI task type (seedance-2) or "
+                "H3 sampling profile (turbo_4). Beats the provider's scene and env setting.",
             )
             p.add_argument(
                 "--extract",

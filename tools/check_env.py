@@ -20,6 +20,7 @@ SUPABASE = [
 PROVIDERS = [
     ("PIAPI_KEY", "PiAPI -- default provider, honours the blockout"),
     ("COMETAPI_KEY", "CometAPI -- alternative, ignores video references"),
+    ("AI_RENDER_H3ZERO_URL", "H3Zero -- self-hosted Modal endpoint"),
 ]
 
 loaded = env.load()
@@ -35,15 +36,17 @@ def is_set(name):
 # store authenticates with the provider key, so demanding Supabase there would
 # report a problem that is not one.
 uploader = upload.configured_name()
+h3_ready = is_set("AI_RENDER_H3ZERO_URL")
+needs_uploader = uploader == "supabase" and not h3_ready
 print(f"Uploader: {uploader}  (AI_RENDER_UPLOADER)\n")
 
 missing = []
-print("Required:" if uploader == "supabase" else "Supabase (unused by this uploader):")
+print("Required:" if needs_uploader else "Supabase (not required for the configured H3/direct uploader):")
 for name, description in SUPABASE:
     ok = is_set(name)
-    if not ok and uploader == "supabase":
+    if not ok and needs_uploader:
         missing.append(name)
-    label = "set    " if ok else ("MISSING" if uploader == "supabase" else "-      ")
+    label = "set    " if ok else ("MISSING" if needs_uploader else "-      ")
     print(f"  {label}  {name:22} {description}")
 
 print("\nProviders (at least one):")

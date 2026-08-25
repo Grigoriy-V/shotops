@@ -1,0 +1,7 @@
+diff --git a/modal_services/h3.py b/modal_services/h3.py
+--- a/modal_services/h3.py
++++ b/modal_services/h3.py
+@@ -90,2 +90,2 @@
+-@modal.asgi_app()
++@modal.asgi_app(requires_proxy_auth=True)
+ def web():
