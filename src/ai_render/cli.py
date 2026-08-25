@@ -407,6 +407,7 @@ def cmd_generate(args):
         raise
 
     runs.write_manifest(out_dir, finished_at=datetime.now(timezone.utc).isoformat())
+    sheet = None
     if args.extract:
         _extract(out_dir / "final.mp4", out_dir / "final_frames", args.extract, args.verbose)
         # The blockout stills exist already; a sheet costs nothing and removes
@@ -414,7 +415,47 @@ def cmd_generate(args):
         if (take / "frames").is_dir():
             sheet = compare.build(take / "frames", out_dir / "final_frames", out_dir / "compare.png")
             print(f"[compare] {_rel(sheet)}")
+    if not args.no_publish:
+        _publish(target, take, out_dir, sheet)
     return 0
+
+
+def _publish(target, take, out_dir, sheet=None):
+    """Copy a finished generation out of `out/` and into the shot, named.
+
+    `out/` is a scratch tree keyed by timestamp, which is the right shape while
+    a run is happening and the wrong shape afterwards: `20260826-012944_base_768p`
+    says when a file was made and nothing about which shot or which spec it came
+    from. The shot's own `render/` is the committed record, and its names carry
+    both -- so this is the step that turns a run into an artifact.
+
+    It used to be done by hand after every paid generation, which is exactly the
+    kind of work that gets skipped once and leaves a result nobody can identify
+    a week later.
+    """
+    import json
+    import shutil
+
+    sid = project.scene_id(json.loads((take / "scene.json").read_text(encoding="utf-8")))
+    version = target.next_version("render")
+    directory = target.dir_for("render")
+    directory.mkdir(parents=True, exist_ok=True)
+    kept = directory / f"{target.name('render', sid, version)}.mp4"
+    shutil.copyfile(out_dir / "final.mp4", kept)
+    print(f"[publish] {_rel(kept)} ({kept.stat().st_size / 1e6:.1f} MB)")
+    runs.write_manifest(out_dir, published=str(_rel(kept)))
+
+    if sheet is None:
+        return
+    # The sheet is named after the render it judges, so it cannot be produced
+    # until the render has a number -- which is why both live here.
+    from PIL import Image
+
+    name = target.name("sheet", sid, target.next_version("sheet"), f"vs_render_v{version:03d}")
+    kept_sheet = target.dir_for("sheet") / f"{name}.jpg"
+    kept_sheet.parent.mkdir(parents=True, exist_ok=True)
+    Image.open(sheet).convert("RGB").save(kept_sheet, quality=92)
+    print(f"[publish] {_rel(kept_sheet)}")
 
 
 def cmd_styleframe(args):
@@ -594,6 +635,12 @@ def main(argv=None):
                 const=8,
                 default=0,
                 help="also pull N stills from the result and build a comparison sheet",
+            )
+            p.add_argument(
+                "--no-publish",
+                action="store_true",
+                help="leave the result in out/ instead of copying it into the "
+                "shot's render/ under its conventional name",
             )
             p.add_argument(
                 "--style",

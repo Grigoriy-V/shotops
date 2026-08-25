@@ -332,6 +332,18 @@ in the take's `frames/`. **Compare identical indices** — `frames/frame_03_.png
 against `final_frames/frame_03_.png`. Comparing different time points reads as
 adherence when there is none; that mistake has already been made once here.
 
+A finished generation is then **copied into the shot's `render/`** under its
+conventional name — `<shot>_<scene id>_render_v00N.mp4` — and, when `--extract`
+built one, the comparison sheet lands in `artifacts/` as
+`..._sheet_v0NN_vs_render_v00N.jpg`. The sheet cannot be named before the render
+has a number, which is why both happen at the same moment.
+
+`out/` is scratch keyed by timestamp: `20260826-012944_base_768p` records when a
+file was made and nothing about which shot or which spec produced it. `render/`
+is the committed record. Doing that copy by hand is how two paid runs ended up
+sitting in `render/` under raw task ids. Pass `--no-publish` to skip it for a
+throwaway probe.
+
 Run `check` before `render` and `render` before `generate` — each stage is free
 until the last one, so failures should surface as early as possible.
 
