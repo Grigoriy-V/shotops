@@ -988,7 +988,8 @@ comparison in the H3 line where exactly one thing moved.
 ### The verdict
 
 **Second of all H3 runs, behind `base`, and the best of everything with a LoRA
-on it.** The user's read, and the one that stands.
+on it.** The user's read, and the one that stands. *013 later took second and
+pushed this to third; it remains the best LoRA run.*
 
 With it, the H3 line finally orders itself, and it orders by step count:
 
@@ -1053,6 +1054,82 @@ That reframes the price/quality question. The gap between four steps and thirty
 is not 4:30 in money — 009 took 21 minutes, but much of that is the same fixed
 cost. Sampling more is the cheapest axis available here; resolution and cold
 starts are the expensive ones.
+
+---
+
+## 013 — Spectrum, and the point where the contact sheet stops deciding
+
+`spectrum` had never been run. It is not a step distillation: it is a
+training-free *feature forecaster* that runs some steps as real H3 transformer
+evaluations and predicts the rest from previous anchors, skipping the
+transformer for those. Thirty scheduled steps, fewer real ones. No LoRA in the
+graph at all.
+
+| | |
+| --- | --- |
+| Task | `7259beffb9104904be617d96b2f28d4a` |
+| Model | `h3zero/ref2va/spectrum`, 768p 16:9 (1344x768), 10 s |
+| Accelerator | none — no LoRA node is built for this profile |
+| Seed | 1001 |
+| VRAM | peak 69.3 / 94.97 GiB (73%) |
+| Time | 13 m 57 s end to end |
+| Result | `render/..._e64594_render_v011.mp4`, 4.1 MB |
+| Compared | `artifacts/..._e64594_sheet_v017_vs_render_v011.jpg` |
+
+### The verdict
+
+**New second place, provisionally**, behind `base` and ahead of every LoRA run.
+**Texture quality is better than the LoRA runs** on a first viewing.
+
+| | Run | Configuration | Steps | Time |
+| --- | --- | --- | --- | --- |
+| 1 | 009 | `base`, no accelerator | 30 | 21 m 03 s |
+| 2 | **013** | `spectrum`, forecasting, no LoRA | 30 scheduled | 13 m 57 s |
+| 3 | 012 | `fl2v_turbo_8`, crossed | 8 | 6 m 51 s |
+| 4 | 011 | `fl2v_turbo_4`, crossed | 4 | 5 m 49 s |
+| 5 | 010 | `ref2v_turbo_4`, matching | 4 | 6 m 12 s |
+
+**A third off the wall clock for a place above every distilled run** — 13 m 57 s
+against `base`'s 21 m 03 s, roughly $0.70 against $1.06. Positive enough to keep;
+tuning it is deferred.
+
+### The finding that is not about Spectrum
+
+**The differences at the top of that table are no longer critical by eye.** The
+user's read: telling 013 from 012 from 009 would need the clips side by side,
+not a contact sheet and not sequential viewing.
+
+That is a statement about the instrument, not about the models. Sixteen stills
+at matched times was the right tool while runs were failing structurally —
+a camera in the wrong place at 43% is obvious in one column. It is the wrong
+tool for choosing between three runs that all hold the blockout and differ in
+texture, stylisation and temporal stability. 003's entry already caught the
+same limit from the other side, on flicker: *"the contact sheet cannot confirm
+or deny that, sixteen stills being the wrong instrument for temporal noise."*
+
+**Paired side-by-side video is the missing instrument**, and nothing in the
+pipeline builds one. Until it exists, rankings inside the top group are
+provisional by construction, and this entry marks its own verdict as such.
+
+### What the stills suggested, and did not settle
+
+At t = 43% the frame carries the building's ground-floor entrance and street
+lamps, where 009 and 012 are already climbing with no ground in view — which
+would mean the climb lags. Recorded as an observation from the sheet, not as a
+finding: the user watched the clip and did not single it out, and video is the
+better instrument of the two. It is also unattributable, because 009 ran at a
+random seed and Spectrum's own documentation says forecast steps change the
+trajectory *even at a matching seed*.
+
+### What was actually measured
+
+One setting. `blend_weight 0.5`, `warmup_steps 1`, `tail_actual_steps 1`,
+`max_history 8`, `model_aware_mode off` — all hardcoded in H3Zero's graph
+builder, none tuned by us. A more conservative setting would forecast less,
+cost more and land nearer `base`. **Spectrum's own tuning is a separate line of
+tests, deliberately deferred.** What this run establishes is that the profile
+works on this deployment and that its default aggressiveness is already worth
+having.
 
 ---
 
