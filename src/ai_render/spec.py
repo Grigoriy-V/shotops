@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-KNOWN_TYPES = {"cube", "plane", "sphere", "cylinder", "cone", "torus"}
+KNOWN_TYPES = {"cube", "plane", "sphere", "cylinder", "cone", "torus", "mesh"}
 # "smooth" is the only one that looks past its own segment: it carries velocity
 # through the key instead of stopping on it. A continuous move wants it.
 KNOWN_EASE = {"linear", "ease", "in", "out", "smooth"}
@@ -102,6 +102,26 @@ def validate(spec):
         if name in names:
             _fail(f"{where}.name", f"duplicate object name {name!r}")
         names.add(name)
+        if kind == "mesh":
+            verts = obj.get("vertices")
+            if not isinstance(verts, list) or not verts:
+                _fail(f"{where}.vertices", "a mesh needs a non-empty list of vertices")
+            for v_index, vertex in enumerate(verts):
+                _check_vec(f"{where}.vertices[{v_index}]", vertex, 3)
+            faces = obj.get("faces")
+            if not isinstance(faces, list) or not faces:
+                _fail(f"{where}.faces", "a mesh needs a non-empty list of faces")
+            for f_index, face in enumerate(faces):
+                if not isinstance(face, list) or len(face) < 3:
+                    _fail(f"{where}.faces[{f_index}]", f"needs at least three indices, got {face!r}")
+                # An index past the end is a crash inside Blender, a long way
+                # from the file that caused it.
+                bad = [j for j in face if not isinstance(j, int) or not 0 <= j < len(verts)]
+                if bad:
+                    _fail(
+                        f"{where}.faces[{f_index}]",
+                        f"vertex index out of range: {bad!r} (have {len(verts)} vertices)",
+                    )
         for channel in ("location", "rotation", "scale"):
             if channel in obj:
                 _check_vec(f"{where}.{channel}", obj[channel], 3)
@@ -141,7 +161,10 @@ def validate(spec):
         # gets the reference contract prepended; `full_prompt` is sent byte for
         # byte and takes precedence, which is how a prompt that was tested by
         # hand stays exactly the prompt that was tested.
-        if not generation.get("prompt") and not generation.get("full_prompt"):
+        # An asset is scratch work -- a car on a grey plane, checked and rendered
+        # locally, never generated -- so it inherits the project's generation
+        # defaults without ever needing a prompt to go with them.
+        if role != "asset" and not generation.get("prompt") and not generation.get("full_prompt"):
             _fail(
                 "generation.prompt",
                 "required to run the video generation step -- or 'full_prompt' "

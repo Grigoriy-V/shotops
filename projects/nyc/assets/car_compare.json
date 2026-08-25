@@ -1,0 +1,39 @@
+{
+  "role": "asset",
+  "note": "Boxed greenhouse on the left row, deformed block on the right, at three footprints. The two on the standard 1.9 x 4.6 x 1.5 car should be nearly identical; the differences appear on the odd sizes, where the boxed asset carries one stored rake and the mesh derives its own. Ground plane and value steps match the street so the silhouettes read the way they will in the shot.",
+  "duration": 1.0,
+  "resolution": [1280, 720],
+  "camera": {
+    "lens": 50.0,
+    "location": [7.0, -11.0, 4.5],
+    "look_at": [0.0, 0.0, 0.9]
+  },
+  "objects": [
+    {
+      "name": "ground",
+      "type": "plane",
+      "size": 1.0,
+      "location": [0, 0, 0],
+      "scale": [30, 30, 1],
+      "color": [0.3, 0.3, 0.31]
+    },
+    {
+      "name": "divider",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0, 0, 0.01],
+      "scale": [0.06, 26, 0.02],
+      "color": [0.55, 0.55, 0.56]
+    }
+  ],
+  "instances": [
+    { "asset": "sedan", "name": "boxed_saloon", "location": [-3.2, 6.0, 0], "size": [1.9, 4.6, 1.5] },
+    { "asset": "sedan_solid", "name": "solid_saloon", "location": [3.2, 6.0, 0], "size": [1.9, 4.6, 1.5] },
+
+    { "asset": "sedan", "name": "boxed_estate", "location": [-3.2, 0.0, 0], "size": [2.1, 5.6, 1.8] },
+    { "asset": "sedan_solid", "name": "solid_estate", "location": [3.2, 0.0, 0], "size": [2.1, 5.6, 1.8] },
+
+    { "asset": "sedan", "name": "boxed_stubby", "location": [-3.2, -6.0, 0], "size": [2.4, 3.8, 1.9] },
+    { "asset": "sedan_solid", "name": "solid_stubby", "location": [3.2, -6.0, 0], "size": [2.4, 3.8, 1.9] }
+  ]
+}

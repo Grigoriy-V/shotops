@@ -52,7 +52,13 @@ def _half_extents(obj):
     kind = obj.get("type", "cube")
     sx, sy, sz = _widest_scale(obj)
 
-    if kind == "cube":
+    if kind == "mesh":
+        # Symmetric about the object origin, which is conservative when the
+        # vertices are not: it can only make the box bigger, never smaller, and
+        # a clearance that errs must err toward "too close".
+        verts = obj.get("vertices") or [(0.0, 0.0, 0.0)]
+        local = tuple(max(abs(v[axis]) for v in verts) for axis in range(3))
+    elif kind == "cube":
         h = obj.get("size", 2.0) / 2.0
         local = (h, h, h)
     elif kind == "plane":

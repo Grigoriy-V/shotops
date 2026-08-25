@@ -203,12 +203,16 @@ proportions from one rule.
   centimetre — 0.95 m to `car_03_body` at t = 1.62, 0.95 m to `car_06_body` at
   t = 2.88. The only line that changed is a wheel's *name*, because a 180°
   instance yaw renumbers them.
-- **A non-uniform footprint skews a rotated part.** The asset stores one
-  windscreen rake, 34.8°, taken from the 1.9 × 4.6 m car. The 5.2 m and 5.6 m
-  instances want 33.3° and 34.4°, because the rake is rise over run. Fifteen
-  millimetres at the pane's edge, invisible here, and unfixable while a raked
-  pane is a rotated box. A part whose polygons are placed in unit space would
-  get it right for free — which is the next thing to try on this car.
+- **A non-uniform footprint skews a rotated part — answered, not yet adopted.**
+  `assets/sedan.json` stores one windscreen rake, 34.8°, taken from the
+  1.9 × 4.6 m car, so the 5.6 m instance is 0.4° out and a short tall one would
+  be 12° out. `assets/sedan_solid.json` builds the greenhouse as a single
+  deformed block instead of a roof box plus two panes: six parts instead of
+  eight, and the rake is derived from the footprint — 34.8° on the saloon,
+  34.4° on the estate, 46.9° on a 3.8 × 1.9 m stub. Compared side by side in
+  [`assets/artifacts/assets_car_compare_0190ac_sheet_v001.jpg`](../../../assets/artifacts/assets_car_compare_0190ac_sheet_v001.jpg).
+  **The shot still uses the boxed asset.** Switching it changes the geometry the
+  camera passes at 0.95 m, so it wants its own `audit` and its own decision.
 - ~~The two mid-road cars are still unproven~~ — **proven.** Generations 002 and
   003 both bring them back as cars at the 0.95 m pass, with wheels, glass, tail
   lights and plates. The 001 failure does not recur.

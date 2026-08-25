@@ -44,14 +44,40 @@ PRIMITIVES = {
 }
 
 
+def build_mesh(spec):
+    """A part whose polygons are placed by hand, from `vertices` and `faces`.
+
+    The reason this exists: a raked windscreen made from a rotated box has one
+    angle, so scaling it to a longer car leaves the rake wrong -- the rake is
+    rise over run, and the run changed. Vertices scale with the box they are
+    declared in, so a solid greenhouse gets the right angle at any footprint for
+    free, and it does it with one object instead of three overlapping ones.
+    """
+    verts = [tuple(v) for v in spec["vertices"]]
+    faces = [tuple(f) for f in spec.get("faces", [])]
+    mesh = bpy.data.meshes.new(spec.get("name", "mesh"))
+    mesh.from_pydata(verts, [], faces)
+    mesh.validate()
+    # Shade flat: a blockout wants readable planes, and a smoothed greenhouse
+    # would hand the video model a soft blob where the silhouette is the point.
+    mesh.polygons.foreach_set("use_smooth", [False] * len(mesh.polygons))
+    mesh.update()
+    obj = bpy.data.objects.new(spec.get("name", "mesh"), mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
 def add_object(spec):
     kind = spec.get("type", "cube")
-    if kind not in PRIMITIVES:
+    if kind == "mesh":
+        obj = build_mesh(spec)
+    elif kind not in PRIMITIVES:
         raise ValueError(
-            "unknown object type %r (known: %s)" % (kind, ", ".join(sorted(PRIMITIVES)))
+            "unknown object type %r (known: mesh, %s)" % (kind, ", ".join(sorted(PRIMITIVES)))
         )
-    PRIMITIVES[kind](spec)
-    obj = bpy.context.active_object
+    else:
+        PRIMITIVES[kind](spec)
+        obj = bpy.context.active_object
     obj.name = spec.get("name", kind)
     obj.rotation_mode = "XYZ"
     obj.location = Vector(spec.get("location", [0, 0, 0]))

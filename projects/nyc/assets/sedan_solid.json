@@ -1,0 +1,74 @@
+{
+  "role": "asset",
+  "note": "The same saloon with the greenhouse as one deformed block instead of a roof box, a raked windscreen box and a backlight box. Six parts instead of eight, no overlapping panels, and the rake comes out right at any footprint because the polygons scale with the box they are declared in: 34.8 degrees on a 4.6 m car, 33.3 on a 5.2 m one, which is what the boxed asset cannot do with a single stored angle. The plan taper -- 0.80 wide at the belt, 0.72 at the roof -- is the other thing three boxes could not give: shoulders.",
+  "parts": [
+    {
+      "name": "body",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 0.0, 0.48],
+      "scale": [1.0, 1.0, 0.4],
+      "color": [0.75, 0.08, 0.06]
+    },
+    {
+      "name": "greenhouse",
+      "type": "mesh",
+      "location": [0.0, 0.0, 0.84],
+      "vertices": [
+        [-0.4, 0.27, -0.16],
+        [0.4, 0.27, -0.16],
+        [0.4, -0.32, -0.16],
+        [-0.4, -0.32, -0.16],
+        [-0.36, 0.12, 0.16],
+        [0.36, 0.12, 0.16],
+        [0.36, -0.22, 0.16],
+        [-0.36, -0.22, 0.16]
+      ],
+      "faces": [
+        [1, 2, 3, 0],
+        [7, 6, 5, 4],
+        [4, 5, 1, 0],
+        [6, 7, 3, 2],
+        [7, 4, 0, 3],
+        [5, 6, 2, 1]
+      ],
+      "color": [0.16, 0.17, 0.2]
+    },
+    {
+      "name": "wheel_1",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [-0.43, -0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    },
+    {
+      "name": "wheel_2",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [0.43, -0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    },
+    {
+      "name": "wheel_3",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [-0.43, 0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    },
+    {
+      "name": "wheel_4",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [0.43, 0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    }
+  ]
+}

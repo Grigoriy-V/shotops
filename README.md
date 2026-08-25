@@ -578,10 +578,16 @@ constraint, not an omission: a yaw folds exactly into each part's own XYZ euler,
 where a general rotation would need composing, and a wrong composition is
 invisible in a grey render and obvious in the result.
 
-The known limit is that **a non-uniform footprint skews a rotated part.** A
-windscreen raked 34.8° on a 4.6 m car wants 33.3° on a 5.2 m one, because the
-rake is rise over run; an asset stores one angle, so the wide instances are a
-degree or two out. Nothing fixes that while a raked pane is a rotated box.
+A part can also be a **`mesh`**, with `vertices` and `faces` placed by hand in
+the same unit space. That is how a shape that must change with the footprint
+gets built: a windscreen raked 34.8° on a 4.6 m car should be 34.4° on a 5.6 m
+one, because the rake is rise over run — a stored angle on a rotated box cannot
+know that, and vertices get it for free.
+
+`assets/sedan.json` and `assets/sedan_solid.json` are the same car built both
+ways, and `assets/car_compare.json` renders them side by side at three
+footprints. Six parts instead of eight, no panels overlapping a roof box, and
+the rake correct at every size.
 
 Expansion happens once, when the spec is loaded, so Blender, `audit` and `check`
 all measure the same geometry — and `scene_id` hashes the expansion, because

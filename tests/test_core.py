@@ -275,6 +275,14 @@ laid = audit_mod._rotated_extents(
 check("rotating 90 about Y swaps X and Z", [round(v, 6) for v in laid], [0.125, 0.34, 0.34])
 check("an unrotated object is untouched",
       audit_mod._rotated_extents({"type": "cube", "size": 2.0}), (1.0, 1.0, 1.0))
+# A mesh is measured from its own vertices, symmetric about the origin. That
+# over-estimates a lopsided part rather than under-estimating it, and a
+# clearance that errs has to err toward "too close".
+check("a mesh is measured from its vertices",
+      audit_mod._half_extents({"type": "mesh",
+                               "vertices": [[-0.4, 0.27, -0.16], [0.36, -0.32, 0.16]],
+                               "scale": [2.0, 1.0, 1.0]}),
+      (0.8, 0.32, 0.16))
 check("animated scale is measured at its widest",
       audit_mod._half_extents({
           "type": "cube", "size": 1.0, "scale": [1.0, 1.0, 1.0],
@@ -432,6 +440,19 @@ expect_error("style_references not a list", lambda s: s["generation"].update(sty
 expect_error("empty style_references", lambda s: s["generation"].update(style_references=[]))
 expect_error("blank style reference", lambda s: s["generation"].update(style_references=["a.png", "  "]))
 expect_error("blank full_prompt", lambda s: s["generation"].update(full_prompt="   "))
+expect_error("mesh with no vertices", lambda s: s["objects"][0].update(type="mesh", faces=[[0, 1, 2]]))
+expect_error(
+    "face index past the end",
+    lambda s: s["objects"][0].update(
+        type="mesh", vertices=[[0, 0, 0], [1, 0, 0], [0, 1, 0]], faces=[[0, 1, 7]]
+    ),
+)
+expect_error(
+    "a face with two corners",
+    lambda s: s["objects"][0].update(
+        type="mesh", vertices=[[0, 0, 0], [1, 0, 0], [0, 1, 0]], faces=[[0, 1]]
+    ),
+)
 expect_error("no prompt of either kind", lambda s: s["generation"].pop("prompt"))
 
 
@@ -507,6 +528,37 @@ check("and lands in the part's z", turned_by_name["car_screen"]["rotation"], [-3
 check("x offsets mirror too", turned_by_name["car_wheel"]["location"][0], 5.9 + 0.43 * 1.9)
 
 check("no instances, no change", assets_mod.expand({"objects": [1]}, None), {"objects": [1]})
+
+# A mesh part has no size or depth to carry the footprint, so it rides on the
+# object scale -- which is the point of it. The polygons are placed in unit
+# space, so the rake of a raked face follows the proportions instead of being a
+# stored angle that is only right for one car.
+(_assets / "solid.json").write_text(json.dumps({"parts": [
+    {"name": "greenhouse", "type": "mesh", "location": [0.0, 0.0, 0.84],
+     "vertices": [[-0.4, 0.27, -0.16], [0.4, 0.27, -0.16], [-0.36, 0.12, 0.16], [0.36, 0.12, 0.16]],
+     "faces": [[0, 1, 3, 2]]}
+]}), encoding="utf-8")
+solid = expand_one({**base, "asset": "solid"})["objects"][0]
+check("a mesh takes the footprint through scale", solid["scale"], [1.9, 4.6, 1.5])
+check("and keeps its unit vertices", solid["vertices"][0], [-0.4, 0.27, -0.16])
+
+
+def rake(size):
+    obj = assets_mod.expand(
+        {"objects": [], "instances": [{"asset": "solid", "name": "c", "location": [0, 0, 0], "size": size}]},
+        _assets,
+    )["objects"][0]
+    belt, roof = obj["vertices"][0], obj["vertices"][2]
+    run = abs(roof[1] - belt[1]) * obj["scale"][1]
+    rise = abs(roof[2] - belt[2]) * obj["scale"][2]
+    return math.degrees(math.atan2(rise, run))
+
+
+# The whole reason a mesh exists here: a longer car has a shallower windscreen,
+# and a rotated box cannot know that because its angle was stored once.
+check("rake on the 4.6 m car", round(rake([1.9, 4.6, 1.5]), 1), 34.8)
+check("shallower on a 5.6 m car", round(rake([2.1, 5.6, 1.8]), 1), 34.4)
+check("steeper on a short tall one", rake([2.4, 3.8, 1.9]) > 45.0, True)
 
 
 def expect_asset_error(label, instance):

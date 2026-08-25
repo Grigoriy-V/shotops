@@ -163,10 +163,17 @@ def expand(spec, assets_dir):
                 origin[2] + local[2],
             ]
 
-            if "scale" in part:
+            # A mesh has no size field to take the footprint through, so its
+            # vertices ride on the object scale. That is the whole point of it:
+            # the polygons are placed in unit space, so a longer car gets a
+            # shallower windscreen rake without anyone computing an angle.
+            unit_scale = part.get("scale")
+            if unit_scale is None and part.get("type") == "mesh":
+                unit_scale = [1.0, 1.0, 1.0]
+            if unit_scale is not None:
                 # Object space, so the yaw carries it into place -- a car turned
                 # 90 degrees is still as wide as it was.
-                obj["scale"] = [part["scale"][i] * size[i] for i in range(3)]
+                obj["scale"] = [unit_scale[i] * size[i] for i in range(3)]
 
             flat = part.get("type", "cube") in FLAT_SIZE_TYPES
             for field, default_axis in SCALAR_AXIS.items():
