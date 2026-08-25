@@ -26,6 +26,7 @@ from .providers.base import unbound_image_tags
 from .providers.h3zero import (
     ACCELERATORS as H3_ACCELERATORS,
     CHECKPOINTS as H3_CHECKPOINTS,
+    DEFAULT_SEED as H3_DEFAULT_SEED,
     NO_ACCELERATOR as H3_NO_ACCELERATOR,
 )
 
@@ -341,10 +342,11 @@ def cmd_generate(args):
         provider_options = {
             "checkpoint": args.checkpoint,
             "accelerator": args.lora,
+            "seed": args.seed,
         }
-    elif args.checkpoint or args.lora:
+    elif args.checkpoint or args.lora or args.seed:
         print(
-            "error: --checkpoint and --lora apply to the h3zero provider only",
+            "error: --checkpoint, --lora and --seed apply to the h3zero provider only",
             file=sys.stderr,
         )
         return 2
@@ -406,7 +408,15 @@ def cmd_generate(args):
         )
         raise
 
-    runs.write_manifest(out_dir, finished_at=datetime.now(timezone.utc).isoformat())
+    runs.write_manifest(
+        out_dir,
+        finished_at=datetime.now(timezone.utc).isoformat(),
+        # What the worker says it ran, beside what the run asked for. They agree
+        # on a fully specified request and diverge wherever the deployment filled
+        # a blank in -- which is worth having on disk rather than re-derivable
+        # only by re-querying a job before its retention expires.
+        **({"executed": provider.executed} if getattr(provider, "executed", None) else {}),
+    )
     sheet = None
     if args.extract:
         _extract(out_dir / "final.mp4", out_dir / "final_frames", args.extract, args.verbose)
@@ -627,6 +637,12 @@ def main(argv=None):
                 help="h3zero only: which step-distillation LoRA to load. Defaults to the "
                 "one distilled from --checkpoint; any of them may be crossed onto any "
                 "checkpoint. Beats the scene and AI_RENDER_H3ZERO_LORA.",
+            )
+            p.add_argument(
+                "--seed",
+                help=f"h3zero only: sampling seed, or 'random' to let the worker draw "
+                f"one. Defaults to {H3_DEFAULT_SEED}, so two runs differ only where "
+                "you changed something. Beats the scene and AI_RENDER_H3ZERO_SEED.",
             )
             p.add_argument(
                 "--extract",

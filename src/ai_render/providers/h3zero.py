@@ -57,6 +57,17 @@ ACCELERATORS = {
     "ref2v_turbo_4": "ref2va",
 }
 NO_ACCELERATOR = "none"
+
+# Left unset, the deployment draws `secrets.randbelow(2**63)` per job and only
+# reports the number afterwards. That is how 008 and 010 came to be read as a
+# one-variable comparison when they also differed in noise. Sending a fixed
+# default makes every run in this project comparable to every other by default;
+# `--seed random` asks for the old behaviour back. The number itself is
+# arbitrary and only has to stay put.
+DEFAULT_SEED = 1001
+RANDOM_SEED = "random"
+MAX_SEED = 0xFFFFFFFFFFFFFFFF
+
 # The gateway rejects any canvas that is not one of its own native presets for
 # the requested resolution, so these are copied from what `native_canvas` in the
 # deployment resolves to, not chosen. 768p is the deployment's recommended tier;
@@ -148,8 +159,45 @@ def verify_reference_tags(body, style_count):
     ]
 
 
+def _resolve_seed(value):
+    """Normalise a seed to an int, or to None meaning "let the server draw one"."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if value.strip().lower() == RANDOM_SEED:
+            return None
+        try:
+            value = int(value.strip(), 10)
+        except ValueError:
+            raise ValueError(
+                f"H3 seed must be an integer or {RANDOM_SEED!r}, got {value!r}"
+            ) from None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"H3 seed must be an integer or {RANDOM_SEED!r}, got {value!r}")
+    if not 0 <= value <= MAX_SEED:
+        raise ValueError(f"H3 seed must be between 0 and {MAX_SEED}, got {value}")
+    return value
+
+
+def executed_settings(body):
+    """What the worker reports it *ran*, as opposed to what the request asked for.
+
+    The two diverge wherever the deployment fills a blank in, and the seed is
+    the case that matters: unset, the worker invents one and this is the only
+    place it is ever named. Recorded beside the request rather than instead of
+    it, because the difference between the two is sometimes the finding.
+    """
+    result = (body or {}).get("result") or {}
+    kept = {}
+    for key in ("model", "seed", "lora_id", "lora_matches_checkpoint",
+                "steps", "sampler", "scheduler", "width", "height"):
+        if result.get(key) is not None:
+            kept[key] = result[key]
+    return kept
+
+
 def _print_model(body):
-    """Report the checkpoint that actually ran.
+    """Report the checkpoint, accelerator and seed that actually ran.
 
     With the checkpoint selectable, "which model made this" stops being
     something the caller can assume. The worker reads it back out of the graph
@@ -164,6 +212,9 @@ def _print_model(body):
         matched = result.get("lora_matches_checkpoint")
         note = "" if matched is not False else " (crossed onto another checkpoint)"
         print(f"[generate]   accelerator {lora}{note}")
+    seed = result.get("seed")
+    if seed is not None:
+        print(f"[generate]   seed {seed}")
 
 
 def _print_vram(body):
@@ -191,7 +242,7 @@ class H3Zero(VideoProvider):
     resolution = "480p"
 
     def __init__(self, sampling_profile=None, checkpoint=None, accelerator=None,
-                 poll_interval=5.0, timeout=1800.0):
+                 seed=None, poll_interval=5.0, timeout=1800.0):
         self.sampling_profile = (
             sampling_profile
             or os.environ.get("AI_RENDER_H3ZERO_PROFILE")
@@ -200,7 +251,13 @@ class H3Zero(VideoProvider):
         # run asked for, before `generate` is ever called.
         self.checkpoint = checkpoint or os.environ.get("AI_RENDER_H3ZERO_CHECKPOINT")
         self.accelerator = accelerator or os.environ.get("AI_RENDER_H3ZERO_LORA")
+        # `0` is a legitimate seed, so this cannot collapse into `or`.
+        self.seed = seed if seed is not None else os.environ.get("AI_RENDER_H3ZERO_SEED")
         self.model = self.sampling_profile or "turbo_4"
+        # Filled in once the run finishes, from the worker's account of the
+        # graph it executed. Empty until then, and on a deployment too old to
+        # report one.
+        self.executed = {}
         self.poll_interval = poll_interval
         self.timeout = timeout
 
@@ -383,6 +440,13 @@ class H3Zero(VideoProvider):
                 f"H3 accelerator_lora must be one of {sorted(ACCELERATORS)} "
                 f"or {NO_ACCELERATOR!r}, got {accelerator!r}"
             )
+        # Resolved here rather than left blank for the deployment to fill, since
+        # what it fills a blank with is a fresh random number per job. A scene
+        # may still ask for `random` explicitly.
+        seed = self.seed
+        if seed is None:
+            seed = config.get("seed", DEFAULT_SEED)
+        seed = _resolve_seed(seed)
         resolution = str(generation.get("resolution", self.resolution))
         if resolution not in DIMENSIONS:
             raise ValueError(
@@ -402,13 +466,13 @@ class H3Zero(VideoProvider):
         width, height = DIMENSIONS[resolution][ratio]
         return (
             config, prompt, styles, profile, duration, width, height, resolution,
-            checkpoint, accelerator,
+            checkpoint, accelerator, seed,
         )
 
     def generate(self, reference_video, generation, out_path, style_images=None, on_task=None):
         (
             config, prompt, styles, profile, duration, width, height, resolution,
-            checkpoint, accelerator,
+            checkpoint, accelerator, seed,
         ) = self._settings(generation, style_images)
         references = [
             {"id": "blockout", "kind": "video", "field": "reference_0", "use_audio": False}
@@ -430,6 +494,10 @@ class H3Zero(VideoProvider):
         }
         if accelerator is not None:
             request_config["accelerator_lora"] = accelerator
+        # Omitted rather than sent as null when random was asked for, so the
+        # request says "no opinion" the same way an older client would.
+        if seed is not None:
+            request_config["seed"] = seed
         crossed = (
             accelerator in ACCELERATORS and ACCELERATORS[accelerator] != checkpoint
         )
@@ -441,6 +509,10 @@ class H3Zero(VideoProvider):
         if accelerator:
             note = " -- distilled from a different checkpoint" if crossed else ""
             print(f"[generate] accelerator {accelerator}{note}")
+        print(
+            f"[generate] seed {seed}" if seed is not None
+            else "[generate] seed random -- the worker will draw one"
+        )
         print("[generate] prompt sent verbatim from generation.h3zero.full_prompt")
         status, body = self._request(
             "POST",
@@ -457,6 +529,7 @@ class H3Zero(VideoProvider):
         for reference_id, tag in verify_reference_tags(body, len(styles)) or []:
             print(f"[generate]   {tag} <- {reference_id}")
         finished = self._poll(task_id)
+        self.executed = executed_settings(finished)
         _print_model(finished)
         _print_vram(finished)
         out = self._download(f"/api/jobs/{task_id}/video", out_path)
@@ -473,6 +546,7 @@ class H3Zero(VideoProvider):
 
     def fetch(self, task_id, out_path):
         finished = self._poll(task_id, first_delay=0.0)
+        self.executed = executed_settings(finished)
         _print_model(finished)
         _print_vram(finished)
         out = self._download(f"/api/jobs/{task_id}/video", out_path)

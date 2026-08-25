@@ -44,6 +44,8 @@ def main():
     parser.add_argument("scene", type=Path)
     parser.add_argument("--checkpoint")
     parser.add_argument("--lora")
+    parser.add_argument("--seed")
+    parser.add_argument("--resolution")
     args = parser.parse_args()
 
     gateway = _gateway()
@@ -51,14 +53,18 @@ def main():
     from ai_render.providers.h3zero import H3Zero, expected_tags, verify_reference_tags
 
     scene, target = _load(args.scene)
-    generation = scene.get("generation") or {}
+    generation = dict(scene.get("generation") or {})
+    if args.resolution:
+        generation["resolution"] = args.resolution
     base = target.scene_path.parent
     styles = [(base / name).resolve() for name in generation.get("style_references", [])]
 
-    provider = H3Zero(checkpoint=args.checkpoint, accelerator=args.lora)
+    provider = H3Zero(
+        checkpoint=args.checkpoint, accelerator=args.lora, seed=args.seed
+    )
     (
         _config, prompt, styles, profile, duration, width, height, resolution,
-        checkpoint, accelerator,
+        checkpoint, accelerator, seed,
     ) = provider._settings(generation, styles)
 
     references = [
@@ -80,10 +86,16 @@ def main():
     }
     if accelerator is not None:
         request_config["accelerator_lora"] = accelerator
+    if seed is not None:
+        request_config["seed"] = seed
 
     parsed = gateway.parse_config(prompt, json.dumps(request_config))
     print(f"accepted : {duration}s @ {resolution} {width}x{height}, profile {parsed['sampling_profile']}")
     print(f"sampling : {parsed['steps']} steps, {parsed['sampler']} / {parsed['scheduler']}")
+    print(
+        f"seed     : {parsed['seed']}" if parsed["seed"] is not None
+        else "seed     : random -- the worker will draw one per job"
+    )
 
     # Build the graph the worker would build and read the checkpoint back off
     # it, rather than trusting that the field arrived where it was aimed.
@@ -102,13 +114,18 @@ def main():
         width=width,
         height=height,
         duration_seconds=duration,
-        seed=0,
+        # The worker substitutes a random seed of its own when the request has
+        # none, so 0 here stands only for "whatever it draws".
+        seed=parsed["seed"] if parsed["seed"] is not None else 0,
         sampling_profile=parsed["sampling_profile"],
         reference_checkpoint=parsed["reference_checkpoint"],
         accelerator_lora=parsed["accelerator_lora"],
         resolution=parsed["resolution"],
         references=staged,
     )
+    noise = workflow["noise"]["inputs"]["noise_seed"]
+    if parsed["seed"] is not None and noise != parsed["seed"]:
+        raise SystemExit(f"error: seed {parsed['seed']} reached the graph as {noise}")
     accelerator = (workflow.get("turbo_lora") or {}).get("inputs", {}).get("lora_name")
     print(
         f"checkpoint: {parsed['reference_checkpoint']} "

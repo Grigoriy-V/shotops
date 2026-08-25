@@ -102,8 +102,37 @@ print a note when a run is crossed, and the finished job says so in
 `AI_RENDER_H3ZERO_CHECKPOINT` and `AI_RENDER_H3ZERO_LORA` do the same as the
 flags for an unattended run. Precedence for both is flag → environment → scene —
 the opposite of `sampling_profile`, deliberately: these exist to be flipped for
-one comparison without editing and committing the shot. `run.json` records what
-the run asked for; `generate` prints what the service says actually ran.
+one comparison without editing and committing the shot.
+
+### The seed is pinned by default
+
+**H3 runs send `seed: 1001` unless told otherwise.** The deployment's own default
+is a fresh `secrets.randbelow(2**63)` per job, which it reports only afterwards —
+so before this was pinned, two runs meant to differ in one setting also differed
+in noise, and generations 008 and 010 were briefly compared as though they did
+not. At four steps with no CFG that is not a small difference.
+
+```bash
+python -m ai_render generate <scene> --provider h3zero --seed 42
+python -m ai_render generate <scene> --provider h3zero --seed random
+```
+
+`--seed random` restores the old behaviour when variety is the point rather than
+comparability. `AI_RENDER_H3ZERO_SEED` and a `"seed"` key under
+`generation.h3zero` work the same way, with the same flag → environment → scene
+precedence.
+
+### What was asked for, and what ran
+
+`run.json` records both. The top-level `checkpoint`, `accelerator_lora` and the
+merged `generation` block are the *request*; an `executed` block holds what the
+worker says it actually ran — model, seed, LoRA id, steps, sampler, scheduler and
+canvas, read off the graph it executed rather than off the request.
+
+The two agree on a fully specified run and diverge wherever the deployment filled
+a blank in. Having both on disk is what makes a comparison between two takes
+checkable months later, once the jobs themselves have aged out of Modal's
+retention.
 
 H3 reference tags are case-sensitive and differ from Seedance: `<Video 1>` and
 `<Picture 1>`. The H3 prompt is therefore separate; the provider never rewrites
