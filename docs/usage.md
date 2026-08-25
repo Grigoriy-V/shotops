@@ -61,10 +61,25 @@ The value is not validated against a whitelist — PiAPI adds task types faster
 than this repo can track, and rejecting a working one is worse than letting a
 typo reach a clear API error.
 
-The same `.env` needs Supabase Storage credentials for the upload hop —
-`SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (service_role, it needs storage write),
-and `SUPABASE_BUCKET`. Create the bucket first; it can stay **private**, since
-access is via signed URLs.
+### Where references get published
+
+Seedance takes reference videos by URL only, so the blockout and any look
+references have to be reachable from the internet for the length of one job.
+`AI_RENDER_UPLOADER` picks how:
+
+| | |
+| --- | --- |
+| `supabase` (default) | Your own bucket, signed URL, object deleted the moment the job ends. Needs `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (service_role — it needs storage write) and `SUPABASE_BUCKET`. Create the bucket first; it can stay **private**, since access is via signed URLs. |
+| `piapi` | The provider's own ephemeral store, `storage.theapi.app` — the host their playground publishes to. Authenticates with `PIAPI_KEY`, needs a Creator plan, 10 MB per file. |
+
+The choice is not cosmetic. PiAPI's Seedance docs say *"Use publicly accessible
+URLs (e.g. hosted on a CDN or cloud storage). Signed / expiring URLs may fail"* —
+which describes the Supabase route exactly. Against that, `piapi` leaves the file
+on someone else's server for 24 hours and offers no delete endpoint, so the
+cleanup step genuinely does nothing. Pick per what you are uploading.
+
+Whichever runs, `run.json` records it, because where a reference was published
+is a difference a result may later have to be explained by.
 
 ```bash
 python tools/check_env.py

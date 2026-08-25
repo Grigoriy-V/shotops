@@ -4,6 +4,7 @@ build_scene.py lives inside Blender, but its interpolation is stdlib-only, so we
 import it with stub bpy/mathutils modules and exercise the math directly.
 """
 
+import base64
 import importlib
 import json
 import math
@@ -890,6 +891,97 @@ try:
     print("  FAIL unknown extension rejected")
 except ValueError:
     print("  ok   unknown extension rejected")
+
+print("upload -- piapi's own store, and its limits")
+from ai_render.upload import PiapiUploader, configured_name, get_uploader as _get_uploader  # noqa: E402
+
+os.environ.pop("AI_RENDER_UPLOADER", None)
+check("supabase stays the default", configured_name(), "supabase")
+os.environ["AI_RENDER_UPLOADER"] = "piapi"
+check("env selects piapi", configured_name(), "piapi")
+os.environ.pop("AI_RENDER_UPLOADER", None)
+try:
+    _get_uploader("nope")
+    failures.append("uploader registry: expected ValueError")
+    print("  FAIL unknown uploader rejected")
+except ValueError:
+    print("  ok   unknown uploader rejected")
+
+# PiAPI's limits are tighter than ours: .mov and .webm are in CONTENT_TYPES but
+# not on their accepted list, and 10 MB is a hard ceiling. Both must fail here,
+# before a file is base64'd and posted.
+uploader = PiapiUploader(key="test-key")
+with _tempfile.TemporaryDirectory() as tmp:
+    small = Path(tmp) / "preview.mp4"
+    small.write_bytes(b"0" * 1024)
+    mov = Path(tmp) / "preview.mov"
+    mov.write_bytes(b"0" * 1024)
+    huge = Path(tmp) / "big.mp4"
+    huge.write_bytes(b"0" * (PiapiUploader.MAX_BYTES + 1))
+
+    uploader._check(small)  # must not raise
+    print("  ok   a normal blockout passes the local checks")
+    for label, victim in [("a .mov", mov), ("an oversized file", huge)]:
+        try:
+            uploader._check(victim)
+            failures.append(f"piapi uploader {label}: expected ValueError")
+            print(f"  FAIL piapi uploader rejects {label}")
+        except ValueError:
+            print(f"  ok   piapi uploader rejects {label}")
+
+saved_key = os.environ.pop("PIAPI_KEY", None)
+try:
+    PiapiUploader()
+    failures.append("piapi uploader: expected RuntimeError without a key")
+    print("  FAIL piapi uploader needs a key")
+except RuntimeError:
+    print("  ok   piapi uploader needs a key")
+finally:
+    if saved_key is not None:
+        os.environ["PIAPI_KEY"] = saved_key
+
+# No delete endpoint exists, so cleanup does nothing -- but it must still be
+# callable and silent, because the provider runs every cleanup in a finally
+# block and an exception there would mask the real result.
+import requests as _requests  # noqa: E402
+
+
+class _Uploaded:
+    status_code = 200
+
+    @staticmethod
+    def json():
+        return {"code": 200, "data": {"url": "https://storage.theapi.app/v/1.mp4"}, "message": ""}
+
+
+sent = {}
+
+
+def _fake_post(url, json=None, headers=None, timeout=None):
+    sent.update(url=url, body=json, headers=headers)
+    return _Uploaded()
+
+
+saved_post = _requests.post
+try:
+    _requests.post = _fake_post
+    with _tempfile.TemporaryDirectory() as tmp:
+        blockout = Path(tmp) / "preview.mp4"
+        blockout.write_bytes(b"blockout-bytes")
+        url, cleanup = PiapiUploader(key="test-key").upload(blockout)
+finally:
+    _requests.post = saved_post
+
+check("returns the url from data.url", url, "https://storage.theapi.app/v/1.mp4")
+check("authenticates with x-api-key", sent["headers"]["x-api-key"], "test-key")
+check("sends the file name", sent["body"]["file_name"], "preview.mp4")
+check(
+    "sends the bytes base64-encoded",
+    base64.b64decode(sent["body"]["file_data"]),
+    b"blockout-bytes",
+)
+cleanup()
+print("  ok   cleanup is callable and silent")
 
 print("runs -- one task, one directory")
 import tempfile as _tempfile  # noqa: E402

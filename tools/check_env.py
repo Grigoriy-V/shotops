@@ -8,9 +8,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from ai_render import env  # noqa: E402
+from ai_render import env, upload  # noqa: E402
 
-REQUIRED = [
+SUPABASE = [
     ("SUPABASE_URL", "Supabase project URL"),
     ("SUPABASE_SERVICE_KEY", "Supabase service_role key -- storage write access"),
     ("SUPABASE_BUCKET", "Storage bucket name (default: ai-render)"),
@@ -31,12 +31,20 @@ def is_set(name):
     return bool(value) and "<" not in value
 
 
-print("Required:")
+# Which storage credentials matter depends on the uploader in force: the piapi
+# store authenticates with the provider key, so demanding Supabase there would
+# report a problem that is not one.
+uploader = upload.configured_name()
+print(f"Uploader: {uploader}  (AI_RENDER_UPLOADER)\n")
+
 missing = []
-for name, description in REQUIRED:
-    if not is_set(name):
+print("Required:" if uploader == "supabase" else "Supabase (unused by this uploader):")
+for name, description in SUPABASE:
+    ok = is_set(name)
+    if not ok and uploader == "supabase":
         missing.append(name)
-    print(f"  {'set    ' if is_set(name) else 'MISSING'}  {name:22} {description}")
+    label = "set    " if ok else ("MISSING" if uploader == "supabase" else "-      ")
+    print(f"  {label}  {name:22} {description}")
 
 print("\nProviders (at least one):")
 for name, description in PROVIDERS:

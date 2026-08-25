@@ -8,7 +8,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import audit, blender_runner, compare, env, project, runs, spec as spec_mod, styleframe
+from . import (
+    audit,
+    blender_runner,
+    compare,
+    env,
+    project,
+    runs,
+    spec as spec_mod,
+    styleframe,
+    upload,
+)
 from .providers import get_provider
 from .providers.base import unbound_image_tags
 
@@ -289,6 +299,7 @@ def cmd_generate(args):
         provider=provider.name,
         model=resolved_model,
         generation=generation,
+        uploader=upload.configured_name(),
         style_references=[str(_rel(p)) for p in style_images],
         started_at=datetime.now(timezone.utc).isoformat(),
     )

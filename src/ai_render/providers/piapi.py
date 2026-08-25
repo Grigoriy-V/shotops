@@ -11,7 +11,13 @@ not.
 
 Reference tags are positional -- `@video1` is the first entry in `video_urls`.
 The reference video still has to be reachable by URL, so `upload.py` publishes
-the blockout to Supabase Storage and deletes it afterwards.
+it first. Which host that is matters: the docs ask for plain public URLs and
+warn that "signed / expiring URLs may fail", so `AI_RENDER_UPLOADER=piapi`
+exists to publish to the provider's own store instead of a signed bucket.
+
+Documented limits on omni_reference, none of them enforced here because no shot
+has come near one yet: up to 9 images, up to 3 videos, 1 to 15 references in
+total, mp4/mov video under 100 MB.
 
 Billing note from the API's own logs: "billing includes input + output
 duration". A 5s reference feeding a 5s output is charged as 10s, so the blockout
