@@ -84,6 +84,69 @@ specification** — it says *there is one object here and this is where it ends*
 so the prompt has something to point at. The run that did not release the model
 from the marker kept the red and washed the entire frame in it.
 
+### The same shot on a self-hosted model
+
+![h3 result](docs/nyc-h3-result.gif)
+
+This one is **MiniMax H3** — open weights, running on our own Modal deployment on
+an RTX PRO 6000 Blackwell. It shares its spec, its blockout render and its three
+look references with the Seedance run that settled the cars above: scene id
+`e64594`, one take, two providers. Nothing about the shot changed. Only the thing
+at the far end of the pipe did.
+
+| | Seedance 2 via PiAPI | MiniMax H3, self-hosted |
+| --- | --- | --- |
+| Output | 480p, 10 s | **768p** (1344×768), 10 s |
+| Wall clock | 2 m 34 s | 21 m 03 s |
+| Sampling | provider's business | 30 steps, no distillation |
+| Peak VRAM | — | 69.3 / 94.97 GiB (73%) |
+| Cost | **$1.05** — 10,500,000 points billed | **≈$1.06** — 21 GPU-minutes |
+| Structure | held for all ten seconds | held for all ten seconds |
+
+*PiAPI points are tied to cents — 10,000,000 points to the dollar — and this run
+was charged for the reference video as well as the output: 10 s in plus 10 s out,
+20 billed seconds at an effective $0.0525/s. The Seedance figure is an account
+balance, not an estimate. Modal charges $0.000842/s for this card; that one
+assumes the GPU was up for the whole run, and CPU, RAM and stored weights are
+extra on top.*
+
+So the two routes came out a cent apart — and that is the least stable number on
+this page. It holds at 480p against 768p, at 10 seconds, on a cold container.
+Seedance scales linearly with seconds and resolution; the Modal figure is mostly
+fixed cost that a warm container and a shorter queue would cut, and that 30
+sampling steps inflated on purpose.
+
+What differs is not the price but what it buys: full control of the sampler,
+weights that cannot be deprecated out from under a shot, and no content filter
+between an idea and a result. Paid for with eight times the wall clock and a GPU
+to keep fed. Neither is the winner; the point is that the scene spec did not
+notice.
+
+**It did not work on the first try, and the reasons are the useful part.** Two
+earlier H3 runs reproduced the *idea* of the move — street, climb, bay — while
+losing its timing: the camera was already above the rooftops while the blockout
+was still climbing the wall. Three things fixed it, and the research behind them
+is in [h3zero-modal.md](docs/h3zero-modal.md):
+
+- **The prompt was going to the wrong stage.** MiniMax's pipeline is a hosted
+  preprocessor, H3-Context-IR, feeding the released H3-Base. Only H3-Base is
+  open. A free-form prompt is what Context-IR eats — H3-Base expects its
+  *output*, a six-section structured representation. Writing that by hand is
+  what MiniMax tell developers to do, and a blockout pipeline can do it better
+  than a hosted guesser: the subjects are already named in the scene, and the
+  camera keyframes are already the timecodes.
+- **Native resolution.** MiniMax document the short side as 768 and never
+  mention 480p. Both earlier runs were below the resolution the weights were
+  trained at.
+- **Steps.** This graph has no CFG, so step count is the only lever on how hard
+  conditioning is enforced. Four distilled steps became thirty.
+
+And one thing worth knowing before designing a shot around any of it: **an H3
+reference video is context, not control.** It is encoded into a block held
+beside the timeline, never bound frame-to-frame, and the text encoder sees it at
+2 fps. Structure adherence there is coaxed, not enforced — which is exactly why
+it took three runs to coax.
+
 Every run is logged with its provider response, cost and verdict in
 [`generations.md`](projects/nyc/sequences/seq_010/sh_0010/generations.md);
 what building the blockout taught is in
@@ -205,19 +268,28 @@ that produced it.
 projects/**/<scene>.json ─▶ Blender (headless) ─▶ out/<project>/<seq>/<shot>/<scene>/<take>/preview.mp4
                                                    .../frames/*.png
                                                     │
-                                     Supabase Storage (signed URL, then deleted)
-                                                    │
-                                                    ▼
-                                   Seedance via PiAPI (omni_reference)
-                                                    │
+                        ┌───────────────────────────┴───────────────────────────┐
+                        ▼                                                       ▼
+        Supabase Storage (signed URL, then deleted)                  multipart upload
+                        │                                                       │
+                        ▼                                                       ▼
+          Seedance via PiAPI (omni_reference)              MiniMax H3 on your own Modal deployment
+                        │                                                       │
+                        └───────────────────────────┬───────────────────────────┘
                                                     ▼
                                             .../<generation>/final.mp4
+                                     then copied into the shot's render/, named
 ```
 
-The upload hop is not optional: Seedance takes reference **videos** by URL only.
-Images and audio can go inline as base64, video cannot. The blockout goes to your
-own bucket under a random key, is passed as a signed URL with a TTL, and is
-deleted as soon as the job finishes — including when it fails.
+The upload hop on the left is not optional: Seedance takes reference **videos**
+by URL only. Images and audio can go inline as base64, video cannot. The blockout
+goes to your own bucket under a random key, is passed as a signed URL with a TTL,
+and is deleted as soon as the job finishes — including when it fails.
+
+The right-hand route has no such hop, because the endpoint is yours: the blockout
+and the look references are posted straight to it as multipart. Its own gate is
+different — the deployment requires Modal proxy authentication, because an
+unprotected job endpoint hands an RTX PRO 6000 to anyone who finds the URL.
 
 ## Why this shape
 
@@ -238,7 +310,12 @@ between Blender versions, and camera aim can never gimbal-flip mid-shot.
 
 **The provider is one method wide.** The video model is the fastest-moving piece
 of this stack. Swapping Seedance for Runway/Kling/Wan means adding a file in
-`src/ai_render/providers/`, not touching the scene layer.
+`src/ai_render/providers/`, not touching the scene layer. That stopped being a
+claim when the second provider arrived: a self-hosted model, on our own GPU,
+with a different upload path, different tag syntax and a sampler to configure,
+is one file in that directory. The Seedance and H3 runs compared above came off
+the *same* spec — scene id `e64594`, one blockout render, two providers — and
+the scene layer needed nothing.
 
 ## Honest video-to-video, or nothing
 
