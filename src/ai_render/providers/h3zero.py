@@ -10,6 +10,18 @@ H3's reference grammar is not Seedance's grammar.  Prompts here live under
 ``generation.h3zero.full_prompt`` and use case-sensitive ``<Video 1>`` and
 ``<Picture 1>`` tags.  The provider never rewrites or silently reuses the
 top-level, already-tested Seedance prompt.
+
+Three things about the deployment this talks to are worth knowing here:
+
+* Reference conditioning runs on the **Ref2VA** checkpoint, which is what
+  MiniMax trained for it.  The upstream H3Zero routes that graph through FL2VA
+  instead; ``tools/h3zero-ref2va-vram.patch`` puts it back.  Which checkpoint
+  actually ran is in the job's ``result.model``.
+* At least one look reference is **required**.  The blockout is grey, and grey
+  is the only picture of the scene H3 has without one.
+* Results are **not acknowledged**, because acknowledging deletes them.  Modal
+  expires them on its own 24-hour schedule; until then a run stays inspectable
+  and a lost download can be recovered with ``fetch``.
 """
 
 from __future__ import annotations
@@ -28,7 +40,31 @@ from .base import VideoProvider
 
 
 PROFILES = {"turbo_4", "turbo_8", "spectrum", "base"}
-DIMENSIONS = {"16:9": (864, 480), "9:16": (480, 864)}
+# Which checkpoint conditions on the references. `ref2va` is what MiniMax
+# trained for it and the deployment's default; `fl2va` is what upstream H3Zero
+# uses and what generation 007 ran on. Both files are already on the model
+# volume, so this is a field in the request -- an A/B is two runs, not two
+# deployments.
+CHECKPOINTS = {"ref2va", "fl2va"}
+
+# The step-distillation LoRAs, and the checkpoint each was distilled from.
+# Advisory, not a constraint: any accelerator can be sent with any checkpoint,
+# and crossing them deliberately is how you find out what it costs. A crossed
+# pairing is reported, never refused. `none` loads no accelerator.
+ACCELERATORS = {
+    "fl2v_turbo_4": "fl2va",
+    "fl2v_turbo_8": "fl2va",
+    "ref2v_turbo_4": "ref2va",
+}
+NO_ACCELERATOR = "none"
+# The gateway rejects any canvas that is not one of its own native presets for
+# the requested resolution, so these are copied from what `native_canvas` in the
+# deployment resolves to, not chosen. 768p is the deployment's recommended tier;
+# 480p is this project's default because it is what the shots are authored at.
+DIMENSIONS = {
+    "480p": {"16:9": (864, 480), "9:16": (480, 864)},
+    "768p": {"16:9": (1344, 768), "9:16": (768, 1344)},
+}
 TERMINAL_BAD = {"failed", "expired", "cancelled"}
 
 
@@ -71,6 +107,77 @@ def validate_h3_prompt(prompt, pictures):
         raise ValueError("no standalone audio reference is attached, so <Audio N> tags are unavailable")
 
 
+def expected_tags(style_count):
+    """The tags the service should assign, given what `generate` sends.
+
+    Tags are positional and numbered independently per kind, so the blockout --
+    sent first and the only video -- is always `<Video 1>`, and the look images
+    follow in upload order as `<Picture 1>` upward.
+    """
+    return ["<Video 1>"] + [f"<Picture {number}>" for number in range(1, style_count + 1)]
+
+
+def verify_reference_tags(body, style_count):
+    """Check the tags the service actually assigned against what we meant.
+
+    Worth doing even though the mapping is deterministic on paper. The prompt
+    names its references by tag, and a shifted tag is the one failure that costs
+    a full generation while looking, in the logs, exactly like a success: every
+    file uploaded, every reference accepted, the wrong picture behind each name.
+    """
+    references = ((body or {}).get("request") or {}).get("references")
+    if not isinstance(references, list) or not references:
+        # The gateway has echoed tags since the version this was written
+        # against. Say so rather than passing silently, but do not fail a
+        # generation over a missing echo.
+        return None
+    assigned = []
+    for reference in references:
+        for tag in (reference or {}).get("tags") or []:
+            assigned.append(str(tag))
+    wanted = expected_tags(style_count)
+    if assigned != wanted:
+        raise RuntimeError(
+            "H3Zero assigned reference tags that do not match the upload order: "
+            f"got {assigned}, expected {wanted}. The prompt names its references by "
+            "tag, so this generation would bind the wrong files."
+        )
+    return [
+        (str((reference or {}).get("id")), ((reference or {}).get("tags") or [None])[0])
+        for reference in references
+    ]
+
+
+def _print_model(body):
+    """Report the checkpoint that actually ran.
+
+    With the checkpoint selectable, "which model made this" stops being
+    something the caller can assume. The worker reads it back out of the graph
+    it executed, so this is the observation rather than the request.
+    """
+    result = (body or {}).get("result") or {}
+    model = result.get("model")
+    if model:
+        print(f"[generate]   ran on {model}")
+    lora = result.get("lora_id") or result.get("lora")
+    if lora:
+        matched = result.get("lora_matches_checkpoint")
+        note = "" if matched is not False else " (crossed onto another checkpoint)"
+        print(f"[generate]   accelerator {lora}{note}")
+
+
+def _print_vram(body):
+    """Report the worker's peak VRAM, when the deployment is new enough to send it."""
+    vram = (((body or {}).get("result") or {}).get("vram")) or {}
+    peak = vram.get("peak_used_gib")
+    total = vram.get("total_gib")
+    if peak is None or total is None:
+        return
+    share = vram.get("peak_used_fraction")
+    tail = f" ({share:.0%})" if isinstance(share, (int, float)) else ""
+    print(f"[generate]   vram peak {peak} / {total} GiB{tail} on {vram.get('device') or 'the GPU'}")
+
+
 def _mime(path):
     value = mimetypes.guess_type(str(path))[0]
     if value not in {"video/mp4", "video/quicktime", "video/webm", "image/png", "image/jpeg", "image/webp"}:
@@ -83,11 +190,16 @@ class H3Zero(VideoProvider):
     uploader = "direct-multipart"
     resolution = "480p"
 
-    def __init__(self, sampling_profile=None, poll_interval=5.0, timeout=1800.0):
+    def __init__(self, sampling_profile=None, checkpoint=None, accelerator=None,
+                 poll_interval=5.0, timeout=1800.0):
         self.sampling_profile = (
             sampling_profile
             or os.environ.get("AI_RENDER_H3ZERO_PROFILE")
         )
+        # Held on the instance so the manifest can record which checkpoint the
+        # run asked for, before `generate` is ever called.
+        self.checkpoint = checkpoint or os.environ.get("AI_RENDER_H3ZERO_CHECKPOINT")
+        self.accelerator = accelerator or os.environ.get("AI_RENDER_H3ZERO_LORA")
         self.model = self.sampling_profile or "turbo_4"
         self.poll_interval = poll_interval
         self.timeout = timeout
@@ -239,6 +351,15 @@ class H3Zero(VideoProvider):
         config = _h3_config(generation)
         prompt = config.get("full_prompt")
         styles = [Path(path) for path in style_images or []]
+        if not styles:
+            # Without a look reference the only picture H3 has of the scene is
+            # the grey blockout, and it will take the grey as art direction.
+            # Seedance can be talked out of that; H3 has not been shown to be.
+            raise ValueError(
+                "H3Zero needs at least one look reference. Add 'style_references' to the "
+                "scene, or pass --style, and bind them as <Picture N> in "
+                "generation.h3zero.full_prompt."
+            )
         if len(styles) > 9:
             raise ValueError("H3Zero accepts at most 9 image references")
         validate_h3_prompt(prompt, len(styles))
@@ -248,24 +369,47 @@ class H3Zero(VideoProvider):
         # instantiates us from the nested scene value when no override exists.
         if profile not in PROFILES:
             raise ValueError(f"H3 sampling_profile must be one of {sorted(PROFILES)}, got {profile!r}")
-        resolution = generation.get("resolution", self.resolution)
-        if resolution != "480p":
-            raise ValueError("H3Zero's production API supports only 480p")
+        # Environment beats the scene here, the opposite way round from the
+        # profile, because this one exists to be flipped for a single
+        # comparison run without editing -- and committing -- the shot.
+        checkpoint = self.checkpoint or config.get("checkpoint") or "ref2va"
+        if checkpoint not in CHECKPOINTS:
+            raise ValueError(
+                f"H3 checkpoint must be one of {sorted(CHECKPOINTS)}, got {checkpoint!r}"
+            )
+        accelerator = self.accelerator or config.get("accelerator_lora")
+        if accelerator is not None and accelerator not in {*ACCELERATORS, NO_ACCELERATOR}:
+            raise ValueError(
+                f"H3 accelerator_lora must be one of {sorted(ACCELERATORS)} "
+                f"or {NO_ACCELERATOR!r}, got {accelerator!r}"
+            )
+        resolution = str(generation.get("resolution", self.resolution))
+        if resolution not in DIMENSIONS:
+            raise ValueError(
+                f"H3Zero supports {' and '.join(sorted(DIMENSIONS))}, got {resolution!r}"
+            )
         ratio = generation.get("aspect_ratio", "16:9")
-        if ratio not in DIMENSIONS:
+        if ratio not in DIMENSIONS[resolution]:
             raise ValueError("H3Zero supports only 16:9 or 9:16")
         duration = int(generation.get("duration", 5))
-        if not 2 <= duration <= 15:
-            raise ValueError("H3 reference generations must be 2 to 15 seconds")
+        # The gateway's own validate_generation rejects anything outside 5..15,
+        # so a shorter request is a 422 rather than a short clip. The reference
+        # video may be as short as 2s; the output may not.
+        if not 5 <= duration <= 15:
+            raise ValueError("H3 reference generations must be 5 to 15 seconds")
         if generation.get("generate_audio") is False:
             raise ValueError("H3Zero does not expose an output-audio toggle")
-        width, height = DIMENSIONS[ratio]
-        return config, prompt, styles, profile, duration, width, height
+        width, height = DIMENSIONS[resolution][ratio]
+        return (
+            config, prompt, styles, profile, duration, width, height, resolution,
+            checkpoint, accelerator,
+        )
 
     def generate(self, reference_video, generation, out_path, style_images=None, on_task=None):
-        config, prompt, styles, profile, duration, width, height = self._settings(
-            generation, style_images
-        )
+        (
+            config, prompt, styles, profile, duration, width, height, resolution,
+            checkpoint, accelerator,
+        ) = self._settings(generation, style_images)
         references = [
             {"id": "blockout", "kind": "video", "field": "reference_0", "use_audio": False}
         ]
@@ -278,14 +422,25 @@ class H3Zero(VideoProvider):
             "mode": "references",
             "width": width,
             "height": height,
+            "resolution": resolution,
             "duration_seconds": duration,
             "sampling_profile": profile,
+            "reference_checkpoint": checkpoint,
             "references": references,
         }
+        if accelerator is not None:
+            request_config["accelerator_lora"] = accelerator
+        crossed = (
+            accelerator in ACCELERATORS and ACCELERATORS[accelerator] != checkpoint
+        )
         print(
-            f"[generate] h3zero/{profile} -- {duration}s @ 480p {generation.get('aspect_ratio', '16:9')}, "
+            f"[generate] h3zero/{checkpoint}/{profile} -- {duration}s @ {resolution} "
+            f"{generation.get('aspect_ratio', '16:9')} ({width}x{height}), "
             f"1 video + {len(styles)} picture reference(s)"
         )
+        if accelerator:
+            note = " -- distilled from a different checkpoint" if crossed else ""
+            print(f"[generate] accelerator {accelerator}{note}")
         print("[generate] prompt sent verbatim from generation.h3zero.full_prompt")
         status, body = self._request(
             "POST",
@@ -299,27 +454,30 @@ class H3Zero(VideoProvider):
             raise RuntimeError(f"H3Zero returned no job id: {body!r}")
         if on_task:
             on_task(task_id)
-        self._poll(task_id)
+        for reference_id, tag in verify_reference_tags(body, len(styles)) or []:
+            print(f"[generate]   {tag} <- {reference_id}")
+        finished = self._poll(task_id)
+        _print_model(finished)
+        _print_vram(finished)
         out = self._download(f"/api/jobs/{task_id}/video", out_path)
         if not out.exists() or out.stat().st_size == 0:
             raise RuntimeError("H3Zero download produced an empty file")
-        ack_status, ack_body = self._request("POST", f"/api/jobs/{task_id}/acknowledge")
-        if ack_status != 204:
-            print(
-                f"[generate] warning: result saved, but acknowledgement returned HTTP {ack_status}: "
-                f"{str(ack_body)[:400]}"
-            )
+        # Deliberately not acknowledged. Acknowledging deletes the job record,
+        # the staged references and the MP4 from the Modal volume, which throws
+        # away the only server-side account of what was actually sent. They age
+        # out on the gateway's own 24-hour schedule; until then the run stays
+        # inspectable and `fetch` can recover a lost download.
         print(f"[generate] ok -- {out} ({out.stat().st_size / 1e6:.1f} MB)")
+        print(f"[generate] kept on Modal as job {task_id} until its retention expires")
         return out
 
     def fetch(self, task_id, out_path):
-        self._poll(task_id, first_delay=0.0)
+        finished = self._poll(task_id, first_delay=0.0)
+        _print_model(finished)
+        _print_vram(finished)
         out = self._download(f"/api/jobs/{task_id}/video", out_path)
         if not out.exists() or out.stat().st_size == 0:
             raise RuntimeError("H3Zero download produced an empty file")
-        status, body = self._request("POST", f"/api/jobs/{task_id}/acknowledge")
-        if status != 204:
-            print(f"[fetch] warning: acknowledgement returned HTTP {status}: {str(body)[:400]}")
         return out
 
     def _poll(self, task_id, first_delay=None):

@@ -55,24 +55,74 @@ python -m ai_render generate projects/nyc/sequences/seq_010/sh_0010/street_a.jso
   --provider h3zero --extract
 ```
 
-H3Zero currently produces 480p in `16:9` or `9:16`. The cheapest smoke-test
-profile is `turbo_4`; `turbo_8`, `spectrum`, and `base` are also available.
-`--model turbo_8` is a temporary override. A repeatable setting belongs in the
-scene hierarchy:
+H3Zero produces `16:9` or `9:16` at `480p` (864 x 480) or `768p` (1344 x 768).
+The canvas is not yours to choose — the gateway rejects anything that is not one
+of its own native presets for the tier, so the provider resolves it from
+`resolution` and `aspect_ratio`. This project's shots are authored at 480p; 768p
+is the deployment's recommended tier and costs proportionally more GPU time.
+
+The cheapest smoke-test profile is `turbo_4`; `turbo_8`, `spectrum`, and `base`
+are also available. `--model turbo_8` is a temporary override. A repeatable
+setting belongs in the scene hierarchy:
 
 ```jsonc
 "generation": {
   "h3zero": {
     "sampling_profile": "turbo_4",
+    "checkpoint": "ref2va",
+    "accelerator_lora": "ref2v_turbo_4",   // optional; defaults to the match
     "full_prompt": "Keep <Video 1> ... use <Picture 1> for appearance ..."
   }
 }
 ```
 
+### Model and LoRA, per run
+
+Two independent knobs, both switchable on the command line without touching the
+scene:
+
+```bash
+python -m ai_render generate <scene> --provider h3zero --checkpoint fl2va --lora ref2v_turbo_4
+```
+
+`--checkpoint` picks which model conditions on the references — `ref2va` (the
+default, the one MiniMax trained for reference conditioning) or `fl2va` (what
+upstream H3Zero uses, and what generation 007 ran on).
+
+`--lora` picks the step-distillation LoRA: `ref2v_turbo_4`, `fl2v_turbo_4`,
+`fl2v_turbo_8`, or `none`. Omit it and you get the one distilled from the chosen
+checkpoint.
+
+**Any LoRA works with any checkpoint.** A distillation carries deltas for the
+weights it came from, so crossing them can cost quality — but that is a thing
+worth measuring, so nothing refuses the combination. `check` and `generate` both
+print a note when a run is crossed, and the finished job says so in
+`result.lora_matches_checkpoint`.
+
+`AI_RENDER_H3ZERO_CHECKPOINT` and `AI_RENDER_H3ZERO_LORA` do the same as the
+flags for an unattended run. Precedence for both is flag → environment → scene —
+the opposite of `sampling_profile`, deliberately: these exist to be flipped for
+one comparison without editing and committing the shot. `run.json` records what
+the run asked for; `generate` prints what the service says actually ran.
+
 H3 reference tags are case-sensitive and differ from Seedance: `<Video 1>` and
 `<Picture 1>`. The H3 prompt is therefore separate; the provider never rewrites
-or reuses a tested top-level `full_prompt`. Create and store a dedicated Modal
-proxy token without exposing it in shell history:
+or reuses a tested top-level `full_prompt`.
+
+**At least one look reference is required.** Without one the only picture of the
+scene H3 has is the grey blockout, and it treats grey as art direction. `check`
+refuses an H3 scene with no `style_references` and prints the tag each one will
+land on; `generate` prints the same mapping again from the service's own echo,
+and aborts if the two disagree.
+
+**Results are not deleted after download.** The service offers an acknowledge
+call that frees the job, its staged references and the MP4 from the Modal
+volume; this provider does not make it. A finished run stays inspectable, and a
+download that fails can be recovered with `fetch` instead of paid for twice.
+Modal expires them on its own 24-hour schedule.
+
+Create and store a dedicated Modal proxy token without exposing it in shell
+history:
 
 ```powershell
 python tools/configure_h3zero_modal.py `

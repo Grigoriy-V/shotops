@@ -1,0 +1,966 @@
+diff --git a/frontend/src/lib/api/contracts.ts b/frontend/src/lib/api/contracts.ts
+index 0d20f48..8440c51 100644
+--- a/frontend/src/lib/api/contracts.ts
++++ b/frontend/src/lib/api/contracts.ts
+@@ -46,7 +46,7 @@ function metadata(value: unknown): GenerationMetadata | undefined {
+ 
+ export function parseSpecs(value: unknown): H3Specs {
+   const source = record(value);
+-  if (source.version !== "1.7") throw new Error(`Unsupported H3 spec version: ${String(source.version)}`);
++  if (source.version !== "1.8") throw new Error(`Unsupported H3 spec version: ${String(source.version)}`);
+   const modes = record(source.modes);
+   record(modes.frames);
+   record(modes.references);
+diff --git a/frontend/src/types.ts b/frontend/src/types.ts
+index b0acf52..8ff3b3d 100644
+--- a/frontend/src/types.ts
++++ b/frontend/src/types.ts
+@@ -112,7 +112,7 @@ export interface SamplingProfile {
+ }
+ 
+ export interface H3Specs {
+-  version: "1.7";
++  version: "1.8";
+   modes: {
+     frames: FramesModeSpec;
+     references: ReferencesModeSpec;
+diff --git a/frontend/test/fixtures.ts b/frontend/test/fixtures.ts
+index 0113403..39df9b7 100644
+--- a/frontend/test/fixtures.ts
++++ b/frontend/test/fixtures.ts
+@@ -1,7 +1,7 @@
+ import type { H3Specs, MediaAsset } from "../src/types";
+ 
+ export const specs: H3Specs = {
+-  version: "1.7",
++  version: "1.8",
+   modes: {
+     frames: { available: true, attachments: { mime_types: ["image/png"], max_bytes_each: 20 * 1024 * 1024 } },
+     references: { available: true, order: "upload_order", attachments: {
+diff --git a/minimax_h3/comfy.py b/minimax_h3/comfy.py
+index d502b3b..1004d95 100644
+--- a/minimax_h3/comfy.py
++++ b/minimax_h3/comfy.py
+@@ -6,6 +6,7 @@ import json
+ import os
+ import shutil
+ import subprocess
++import threading
+ import time
+ import urllib.request
+ import uuid
+@@ -79,6 +80,85 @@ def audit_workflow_nodes(workflow: dict, port: int = DEFAULT_PORT) -> None:
+         raise RuntimeError(f"ComfyUI is missing workflow nodes: {missing}")
+ 
+ 
++def system_stats(port: int = DEFAULT_PORT, timeout: float = 3) -> dict:
++    """Read ComfyUI's own device report, including VRAM totals."""
++    with urllib.request.urlopen(
++        f"http://127.0.0.1:{port}/system_stats", timeout=timeout
++    ) as response:
++        value = json.loads(response.read().decode("utf-8"))
++    return value if isinstance(value, dict) else {}
++
++
++class VramSampler:
++    """Track peak VRAM across a generation.
++
++    Diffusion happens in the ComfyUI subprocess, not here, so ``torch`` in this
++    process would report nothing. ComfyUI's own ``/system_stats`` reports the
++    device totals it sees, and the peak only exists while the workflow is
++    running -- reading it afterwards finds memory already released. So sample
++    on a thread for the duration and keep the high-water mark.
++    """
++
++    def __init__(self, port: int = DEFAULT_PORT, interval: float = 2.0):
++        self.port = port
++        self.interval = interval
++        self._stop = threading.Event()
++        self._thread: threading.Thread | None = None
++        self._total: int | None = None
++        self._device: str | None = None
++        self._peak_used: int = 0
++        self._samples: int = 0
++
++    def _sample(self) -> None:
++        try:
++            devices = system_stats(self.port).get("devices") or []
++        except Exception:
++            return
++        for device in devices:
++            if not isinstance(device, dict) or device.get("type") != "cuda":
++                continue
++            total = device.get("vram_total")
++            free = device.get("vram_free")
++            if not isinstance(total, int) or not isinstance(free, int):
++                continue
++            self._total = total
++            self._device = str(device.get("name") or "")
++            self._peak_used = max(self._peak_used, total - free)
++            self._samples += 1
++            return
++
++    def _run(self) -> None:
++        while not self._stop.wait(self.interval):
++            self._sample()
++
++    def __enter__(self) -> "VramSampler":
++        self._sample()
++        self._thread = threading.Thread(target=self._run, daemon=True)
++        self._thread.start()
++        return self
++
++    def __exit__(self, *_exception) -> None:
++        self._stop.set()
++        if self._thread is not None:
++            self._thread.join(timeout=self.interval + 5)
++        self._sample()
++
++    def report(self) -> dict | None:
++        """Return the peak reading, or ``None`` when nothing was sampled."""
++        if self._total is None or not self._samples:
++            return None
++        return {
++            "device": self._device,
++            "total_bytes": self._total,
++            "peak_used_bytes": self._peak_used,
++            "peak_used_gib": round(self._peak_used / 1024**3, 2),
++            "total_gib": round(self._total / 1024**3, 2),
++            "peak_used_fraction": round(self._peak_used / self._total, 4),
++            "samples": self._samples,
++            "sample_interval_seconds": self.interval,
++        }
++
++
+ def find_output(outputs: dict, extensions: tuple[str, ...]) -> str | None:
+     """Find the first saved ComfyUI output matching one of `extensions`."""
+     for node_output in outputs.values():
+diff --git a/minimax_h3/specs.py b/minimax_h3/specs.py
+index f30b964..709566b 100644
+--- a/minimax_h3/specs.py
++++ b/minimax_h3/specs.py
+@@ -12,7 +12,7 @@ FPS = 24
+ CANVAS_MULTIPLE = 32
+ BASE_SHORT_EDGE = 480
+ MAX_PIXELS = 768 * 1344
+-SPEC_VERSION = "1.7"
++SPEC_VERSION = "1.8"
+ BASE_MIN_STEPS = 30
+ BASE_STEPS = 30
+ BASE_MAX_STEPS = 30
+@@ -20,6 +20,7 @@ BASE_SAMPLER = "res_multistep"
+ BASE_SCHEDULER = "simple"
+ TURBO_4_LORA = "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors"
+ TURBO_8_LORA = "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
++REF2V_TURBO_4_LORA = "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors"
+ SPECTRUM_VERSION = "0.2.16"
+ TURBO_LORA = TURBO_4_LORA
+ TURBO_LORA_STRENGTH = 1.0
+@@ -35,6 +36,39 @@ SEED_OPTIONS = (None, 42, 106, 99)
+ DEFAULT_RESOLUTION = "480p"
+ RESOLUTION_IDS = ("480p", "768p")
+ 
++FRAME_DIFFUSION_MODEL = "minimax_h3_fl2va_int8_convrot.safetensors"
++REFERENCE_DIFFUSION_MODEL = "minimax_h3_ref2va_int8_convrot.safetensors"
++
++# Which checkpoint conditions on references is a request parameter, not a
++# deployment. Both files are already on the model volume and neither is bigger
++# than the other, so choosing between them is a string in the config -- and an
++# A/B between them is two jobs rather than two deployments.
++#
++# Ref2VA is the default because it is the checkpoint MiniMax trained for
++# reference conditioning. Upstream routes this graph through FL2VA instead; that
++# is a deliberate upstream choice about general prompt quality, and it is the
++# wrong one when the whole point is that a blockout's camera and blocking
++# survive into the result.
++#
++# The resolved value reaches ComfyUI's UNETLoader, which reads a file from the
++# model volume by name, so a request names an id and never a filename.
++REFERENCE_CHECKPOINTS = {
++    "ref2va": REFERENCE_DIFFUSION_MODEL,
++    "fl2va": FRAME_DIFFUSION_MODEL,
++}
++DEFAULT_REFERENCE_CHECKPOINT = "ref2va"
++
++
++def resolve_reference_checkpoint(name: str | None = None) -> tuple[str, str]:
++    """Resolve a checkpoint id to its filename on the model volume."""
++    checkpoint_id = DEFAULT_REFERENCE_CHECKPOINT if name is None else name
++    if not isinstance(checkpoint_id, str) or checkpoint_id not in REFERENCE_CHECKPOINTS:
++        raise ValueError(
++            "reference_checkpoint must be one of "
++            f"{', '.join(sorted(REFERENCE_CHECKPOINTS))}"
++        )
++    return checkpoint_id, REFERENCE_CHECKPOINTS[checkpoint_id]
++
+ SAMPLING_PROFILES = {
+     "turbo_4": {
+         "label": "Turbo · 4 steps",
+@@ -91,6 +125,70 @@ SAMPLING_PROFILES = {
+ }
+ 
+ 
++# The step-distillation LoRAs, as a flat catalogue. Each was distilled from one
++# checkpoint's weights -- see ACCELERATOR_MATCHES below -- but the catalogue is
++# deliberately not keyed by checkpoint, because running one across the other is
++# a thing worth being able to try. LightX2V distilled the fl2v line first and
++# added the ref2v 4-step on 2026-08-13.
++ACCELERATOR_LORAS = {
++    "fl2v_turbo_4": TURBO_4_LORA,
++    "fl2v_turbo_8": TURBO_8_LORA,
++    "ref2v_turbo_4": REF2V_TURBO_4_LORA,
++}
++
++# Which checkpoint each accelerator was distilled from. Advisory: it is what
++# the defaults are picked from and what the result reports, not a restriction.
++ACCELERATOR_MATCHES = {
++    "fl2v_turbo_4": "fl2va",
++    "fl2v_turbo_8": "fl2va",
++    "ref2v_turbo_4": "ref2va",
++}
++
++# The accelerator a checkpoint and profile get when the request does not say.
++# There is no 8-step ref2v distillation, so ref2va + turbo_8 defaults to the
++# fl2v one -- a cross-checkpoint pairing, chosen because refusing would make an
++# available combination unreachable. Override `accelerator_lora` to change it.
++DEFAULT_ACCELERATORS = {
++    ("fl2va", "turbo_4"): "fl2v_turbo_4",
++    ("fl2va", "turbo_8"): "fl2v_turbo_8",
++    ("ref2va", "turbo_4"): "ref2v_turbo_4",
++    ("ref2va", "turbo_8"): "fl2v_turbo_8",
++}
++
++NO_ACCELERATOR = "none"
++
++
++def resolve_accelerator_lora(
++    checkpoint_id: str,
++    profile_id: str,
++    accelerator: str | None = None,
++) -> tuple[str | None, str | None]:
++    """Resolve the step-distillation LoRA to load, as ``(id, filename)``.
++
++    Any accelerator may be paired with any checkpoint. A distillation carries
++    deltas for the weights it came from, so crossing them is a real risk to
++    output quality -- but it is a *question*, not a mistake, and answering it
++    needs the combination to be reachable. `none` loads no LoRA at all, which
++    is also what `base` and `spectrum` do since they sample the checkpoint
++    directly at full step count.
++    """
++    if accelerator == NO_ACCELERATOR:
++        return None, None
++    if accelerator is None:
++        _, profile = resolve_sampling_profile(profile_id)
++        if not profile["lora"]:
++            return None, None
++        accelerator = DEFAULT_ACCELERATORS.get((checkpoint_id, profile_id))
++        if accelerator is None:
++            return None, None
++    if accelerator not in ACCELERATOR_LORAS:
++        raise ValueError(
++            "accelerator_lora must be one of "
++            f"{', '.join(sorted(ACCELERATOR_LORAS))} or {NO_ACCELERATOR}"
++        )
++    return accelerator, ACCELERATOR_LORAS[accelerator]
++
++
+ def resolve_sampling_profile(
+     profile_id: str | None = None,
+     *,
+@@ -241,8 +339,46 @@ _SPECS = {
+         },
+         "references": {
+             "available": True,
+-            "model": "MiniMax-H3 Base FL2VA with reference conditioning",
+-            "checkpoint": "minimax_h3_fl2va_int8_convrot.safetensors",
++            "model": "MiniMax-H3 Base Ref2VA",
++            "checkpoint": REFERENCE_CHECKPOINTS[DEFAULT_REFERENCE_CHECKPOINT],
++            "checkpoints": {
++                "default": DEFAULT_REFERENCE_CHECKPOINT,
++                "config_field": "reference_checkpoint",
++                "options": [
++                    {
++                        "id": "ref2va",
++                        "label": "Ref2VA (reference-conditioned)",
++                        "filename": REFERENCE_CHECKPOINTS["ref2va"],
++                    },
++                    {
++                        "id": "fl2va",
++                        "label": "FL2VA (frame-conditioned)",
++                        "filename": REFERENCE_CHECKPOINTS["fl2va"],
++                    },
++                ],
++            },
++            "accelerators": {
++                "config_field": "accelerator_lora",
++                "none_value": NO_ACCELERATOR,
++                # Any accelerator pairs with any checkpoint. `matches` records
++                # which weights each was distilled from, so a caller can tell a
++                # matched pairing from a crossed one; it does not restrict.
++                "any_checkpoint": True,
++                "options": [
++                    {
++                        "id": accelerator_id,
++                        "filename": filename,
++                        "matches": ACCELERATOR_MATCHES[accelerator_id],
++                    }
++                    for accelerator_id, filename in sorted(ACCELERATOR_LORAS.items())
++                ],
++                "defaults": {
++                    f"{checkpoint}/{profile}": accelerator
++                    for (checkpoint, profile), accelerator in sorted(
++                        DEFAULT_ACCELERATORS.items()
++                    )
++                },
++            },
+             "order": "upload_order",
+             "tags": {
+                 "image": "<Picture N>",
+diff --git a/minimax_h3/workflow.py b/minimax_h3/workflow.py
+index 358e42d..655cdfd 100644
+--- a/minimax_h3/workflow.py
++++ b/minimax_h3/workflow.py
+@@ -7,20 +7,24 @@ import json
+ from minimax_h3.loras import CONFIGURED_LORAS, resolve_lora_strengths
+ from minimax_h3.media import image_dimensions, image_suffix
+ from minimax_h3.specs import (
++    DEFAULT_REFERENCE_CHECKPOINT,
+     FPS,
++    FRAME_DIFFUSION_MODEL,
+     MAX_IMAGE_BYTES,
+     MAX_PIXELS,
++    REFERENCE_CHECKPOINTS,
++    REFERENCE_DIFFUSION_MODEL,
+     aligned_frame_count,
++    resolve_accelerator_lora,
++    resolve_reference_checkpoint,
+     resolve_resolution,
+     resolve_sampling_profile,
+ )
+ 
+-FRAME_DIFFUSION_MODEL = "minimax_h3_fl2va_int8_convrot.safetensors"
+-REFERENCE_DIFFUSION_MODEL = "minimax_h3_ref2va_int8_convrot.safetensors"
+-# Keep the Ref2VA checkpoint available for fallback/A-B testing, while routing
+-# the production reference-conditioning graph through the higher-quality FL2VA
+-# checkpoint.
+-REFERENCE_CONDITIONING_DIFFUSION_MODEL = FRAME_DIFFUSION_MODEL
++# The checkpoint names and their resolver live in specs.py, which is the
++# authoritative capability contract and cannot import this module. They are
++# re-exported here because this is where callers look for model names.
++REFERENCE_CONDITIONING_DIFFUSION_MODEL = REFERENCE_CHECKPOINTS[DEFAULT_REFERENCE_CHECKPOINT]
+ TEXT_ENCODER = "qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+ VIDEO_VAE = "minimax_h3_video_vae_fp16.safetensors"
+ AUDIO_VAE = "minimax_h3_audio_vae_fp32.safetensors"
+@@ -90,16 +94,17 @@ def _common_workflow(
+     output_stem: str,
+     sampling_profile: str,
+     loras: dict[str, float],
++    accelerator_lora: str | None = None,
+ ) -> dict:
+     _, profile = resolve_sampling_profile(sampling_profile)
+     model_reference = ["model", 0]
+     accelerator_nodes = {}
+-    if profile["lora"]:
++    if accelerator_lora:
+         accelerator_nodes["turbo_lora"] = {
+             "class_type": "LoraLoaderModelOnly",
+             "inputs": {
+                 "model": model_reference,
+-                "lora_name": profile["lora"],
++                "lora_name": accelerator_lora,
+                 "strength_model": profile["lora_strength"],
+             },
+         }
+@@ -291,6 +296,9 @@ def build_frames_workflow(
+         output_stem=output_stem,
+         sampling_profile=profile_id,
+         loras=loras,
++        # Frames mode is FL2VA by definition, which is what the fl2v
++        # distillations were made for.
++        accelerator_lora=resolve_accelerator_lora("fl2va", profile_id)[1],
+     )
+     for label, filename in (
+         ("first_frame", first_frame_filename),
+@@ -317,6 +325,8 @@ def build_reference_workflow(
+     references: list[dict],
+     turbo: bool | None = None,
+     sampling_profile: str | None = None,
++    reference_checkpoint: str | None = None,
++    accelerator_lora: str | None = None,
+     ref_image_size: str = "match",
+     steps: int | None = None,
+     sampler: str | None = None,
+@@ -330,6 +340,7 @@ def build_reference_workflow(
+     sampler = sampler or profile["sampler"]
+     scheduler = scheduler or profile["scheduler"]
+     loras = resolve_lora_strengths(loras)
++    checkpoint_id, checkpoint_file = resolve_reference_checkpoint(reference_checkpoint)
+     validate_generation(
+         prompt=prompt,
+         width=width,
+@@ -358,7 +369,7 @@ def build_reference_workflow(
+         "ref_image_size": ref_image_size,
+     }
+     workflow = _common_workflow(
+-        diffusion_model=REFERENCE_CONDITIONING_DIFFUSION_MODEL,
++        diffusion_model=checkpoint_file,
+         conditioning_class="MiniMaxH3OrderedReferenceToVideo",
+         conditioning_inputs=conditioning_inputs,
+         seed=seed,
+@@ -368,6 +379,9 @@ def build_reference_workflow(
+         output_stem=output_stem,
+         sampling_profile=profile_id,
+         loras=loras,
++        accelerator_lora=resolve_accelerator_lora(
++            checkpoint_id, profile_id, accelerator_lora
++        )[1],
+     )
+ 
+     for index, reference in enumerate(references):
+diff --git a/modal_services/gateway.py b/modal_services/gateway.py
+index c9e95e0..ce06689 100644
+--- a/modal_services/gateway.py
++++ b/modal_services/gateway.py
+@@ -32,16 +32,22 @@ from minimax_h3.specs import (
+     MAX_REFERENCE_VIDEOS,
+     MAX_VIDEO_BYTES,
+     MIN_REFERENCE_DURATION,
++    NO_ACCELERATOR,
+     VIDEO_MIME_TYPES,
+     RESOLUTION_IDS,
+     aspect_presets,
+     get_specs,
+     native_canvas,
++    resolve_accelerator_lora,
+     resolve_resolution,
+     resolve_sampling_profile,
+ )
+ from minimax_h3.loras import resolve_lora_strengths
+-from minimax_h3.workflow import validate_generation, validate_image_bytes
++from minimax_h3.workflow import (
++    resolve_reference_checkpoint,
++    validate_generation,
++    validate_image_bytes,
++)
+ from modal_services import favorites, jobs
+ 
+ DEFAULT_CONFIG = {
+@@ -58,6 +64,8 @@ DEFAULT_CONFIG = {
+     "scheduler": "simple",
+     "geometry_source": None,
+     "ref_image_size": "match",
++    "reference_checkpoint": None,
++    "accelerator_lora": None,
+     "references": [],
+     "loras": None,
+ }
+@@ -165,6 +173,25 @@ def parse_config(prompt: str, raw: str | None) -> dict:
+         raise ValueError("geometry_source must be first_frame, last_frame, or null")
+     if config["ref_image_size"] not in {"match", "max"}:
+         raise ValueError("ref_image_size must be 'match' or 'max'")
++    if config["mode"] == "frames" and supplied.get("reference_checkpoint") is not None:
++        raise ValueError("reference_checkpoint is valid only in references mode")
++    # Normalized to the id, so the record shows what was chosen rather than what
++    # was omitted, and the worker resolves the same id to the same file.
++    config["reference_checkpoint"] = resolve_reference_checkpoint(
++        config["reference_checkpoint"]
++    )[0]
++    if config["mode"] == "frames" and supplied.get("accelerator_lora") is not None:
++        raise ValueError("accelerator_lora is valid only in references mode")
++    if config["mode"] == "references":
++        # Normalized to an id, so the record says which accelerator ran rather
++        # than which one was left unspecified. Any accelerator is allowed with
++        # any checkpoint; only an unknown id is rejected, and it costs a 422
++        # here instead of a GPU cold start.
++        config["accelerator_lora"] = resolve_accelerator_lora(
++            config["reference_checkpoint"],
++            config["sampling_profile"],
++            config["accelerator_lora"],
++        )[0] or NO_ACCELERATOR
+     if not isinstance(config["references"], list):
+         raise ValueError("references must be a JSON array")
+     config["loras"] = resolve_lora_strengths(config["loras"])
+diff --git a/modal_services/h3_gpu.py b/modal_services/h3_gpu.py
+index aab18c1..09a64d5 100644
+--- a/modal_services/h3_gpu.py
++++ b/modal_services/h3_gpu.py
+@@ -20,6 +20,9 @@ from minimax_h3 import hf
+ from minimax_h3.loras import active_loras, download_specs, resolve_lora_strengths
+ from minimax_h3.progress import progress_from_comfy_event
+ from minimax_h3.specs import (
++    ACCELERATOR_LORAS,
++    ACCELERATOR_MATCHES,
++    REF2V_TURBO_4_LORA,
+     SPECTRUM_VERSION,
+     TURBO_4_LORA,
+     TURBO_8_LORA,
+@@ -45,7 +48,7 @@ from minimax_h3.config import (
+ from minimax_h3.workflow import (
+     AUDIO_VAE,
+     FRAME_DIFFUSION_MODEL,
+-    REFERENCE_CONDITIONING_DIFFUSION_MODEL,
++    REFERENCE_CHECKPOINTS,
+     REFERENCE_DIFFUSION_MODEL,
+     TEXT_ENCODER,
+     VIDEO_VAE,
+@@ -56,10 +59,15 @@ from minimax_h3.workflow import (
+ )
+ from modal_services import jobs
+ 
++CHECKPOINT_LABELS = {"ref2va": "Ref2VA", "fl2va": "FL2VA"}
++
+ COMFY_COMMIT = "2f35f4a08176d993cded35dac3332be4f7287f41"
+ MODEL_REVISION = "cfc0a7e86b7bfd99199db90a536ab187af61a8b9"
+ MODEL_REPO = "Comfy-Org/MiniMax-H3"
+-TURBO_REVISION = "e6346777701aa2b64d42ed058cdd71ae00e7cd52"
++# Moved forward from e6346777701aa2b64d42ed058cdd71ae00e7cd52, which predates
++# the Ref2V distillation (published 2026-08-13). The two fl2v files this repo
++# already used are byte-identical at both revisions.
++TURBO_REVISION = "ec01fa4c86263832faa0bd1d6d8f36a281eaabb2"
+ TURBO_REPO = "lightx2v/Minimax-h3-Turbo"
+ SPECTRUM_COMMIT = "567768f0de500ffbaf404dd9527c7a537819f7cd"
+ SPECTRUM_REPO = "https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3.git"
+@@ -72,8 +80,8 @@ MODEL_DOWNLOADS = [
+         FRAME_DIFFUSION_MODEL,
+         MODEL_REVISION,
+     ),
+-    # Retain Ref2VA in the Volume for fallback and controlled comparisons even
+-    # though the production reference workflow currently runs on FL2VA.
++    # Ref2VA, the default for reference conditioning. FL2VA above stays for
++    # frames mode and for A/B comparison against it.
+     (
+         MODEL_REPO,
+         f"diffusion_models/{REFERENCE_DIFFUSION_MODEL}",
+@@ -116,6 +124,16 @@ MODEL_DOWNLOADS = [
+         TURBO_8_LORA,
+         TURBO_REVISION,
+     ),
++    # The Ref2V distillation. Without it the Ref2VA checkpoint has no turbo
++    # profile at all, and the only honest alternatives are the 30-step
++    # profiles.
++    (
++        TURBO_REPO,
++        REF2V_TURBO_4_LORA,
++        "loras",
++        REF2V_TURBO_4_LORA,
++        TURBO_REVISION,
++    ),
+ ] + download_specs()
+ 
+ model_volume = modal.Volume.from_name(MODEL_VOLUME_NAME, create_if_missing=True)
+@@ -394,6 +412,8 @@ class H3Service:
+         mode: str = "frames",
+         geometry_source: str | None = None,
+         ref_image_size: str = "match",
++        reference_checkpoint: str | None = None,
++        accelerator_lora: str | None = None,
+         references: list[dict] | None = None,
+     ) -> dict:
+         """Generate an MP4, optionally persisting it for the async web API.
+@@ -460,6 +480,8 @@ class H3Service:
+                     output_stem=output_stem,
+                     references=staged_references,
+                     ref_image_size=ref_image_size,
++                    reference_checkpoint=reference_checkpoint,
++                    accelerator_lora=accelerator_lora,
+                     resolution=resolution,
+                 )
+             else:
+@@ -479,11 +501,20 @@ class H3Service:
+                     last_frame_filename=last,
+                     resolution=resolution,
+                 )
+-            outputs = comfy_client.submit_and_watch(
+-                workflow,
+-                port=self.port,
+-                on_event=self._progress_handler(job_id),
+-            )
++            with comfy_client.VramSampler(port=self.port) as vram:
++                outputs = comfy_client.submit_and_watch(
++                    workflow,
++                    port=self.port,
++                    on_event=self._progress_handler(job_id),
++                )
++            vram_report = vram.report()
++            if vram_report:
++                print(
++                    "VRAM peak "
++                    f"{vram_report['peak_used_gib']} / {vram_report['total_gib']} GiB "
++                    f"({vram_report['peak_used_fraction']:.0%}) on {vram_report['device']}",
++                    flush=True,
++                )
+             generated = comfy_client.find_output(outputs, (".mp4",))
+             if not generated or not os.path.isfile(generated):
+                 raise FileNotFoundError(
+@@ -493,18 +524,28 @@ class H3Service:
+             frames = aligned_frame_count(duration_seconds)
+             sampling_steps = int(workflow["scheduler"]["inputs"]["steps"])
+             sampling_sampler = str(workflow["sampler"]["inputs"]["sampler_name"])
++            # Read back out of the graph that ran, not from the request. With
++            # the checkpoint selectable, "which model made this" stops being
++            # something the caller can assume and becomes something the result
++            # has to state.
++            loaded_checkpoint = str(workflow["model"]["inputs"]["unet_name"])
++            loaded_id = next(
++                (
++                    checkpoint_id
++                    for checkpoint_id, filename in REFERENCE_CHECKPOINTS.items()
++                    if filename == loaded_checkpoint
++                ),
++                "unknown",
++            )
+             metadata = {
+                 "mode": mode,
+                 "model": (
+-                    "MiniMax-H3-FL2VA (reference conditioning)"
++                    f"MiniMax-H3-{CHECKPOINT_LABELS.get(loaded_id, loaded_id)}"
+                     if mode == "references"
+                     else "MiniMax-H3-FL2VA"
+                 ),
+-                "checkpoint": (
+-                    REFERENCE_CONDITIONING_DIFFUSION_MODEL
+-                    if mode == "references"
+-                    else FRAME_DIFFUSION_MODEL
+-                ),
++                "checkpoint": loaded_checkpoint,
++                "reference_checkpoint": loaded_id if mode == "references" else None,
+                 "width": width,
+                 "height": height,
+                 "resolution": resolution,
+@@ -523,10 +564,33 @@ class H3Service:
+                 },
+                 "audio": {"native": True, "sample_rate_hz": 32000, "channels": 2},
+             }
+-            if profile["lora"]:
++            if vram_report:
++                metadata["vram"] = vram_report
++            # Read back from the graph, like the checkpoint: with the pairing
++            # depending on both, "which accelerator ran" is an observation.
++            accelerator = (workflow.get("turbo_lora") or {}).get("inputs", {}).get("lora_name")
++            if accelerator:
++                accelerator_id = next(
++                    (
++                        name
++                        for name, filename in ACCELERATOR_LORAS.items()
++                        if filename == accelerator
++                    ),
++                    None,
++                )
+                 metadata.update({
+-                    "lora": profile["lora"],
++                    "lora": accelerator,
++                    "lora_id": accelerator_id,
+                     "lora_strength": profile["lora_strength"],
++                    # Says whether this run crossed a distillation onto weights
++                    # it was not made from, which is allowed and is sometimes
++                    # the point -- but the result should not have to be guessed
++                    # at from filenames afterwards.
++                    "lora_matches_checkpoint": (
++                        None
++                        if accelerator_id is None or mode != "references"
++                        else ACCELERATOR_MATCHES.get(accelerator_id) == loaded_id
++                    ),
+                 })
+             if profile["spectrum"]:
+                 metadata["spectrum"] = {
+diff --git a/tests/test_comfy.py b/tests/test_comfy.py
+index ae0c323..97f62d8 100644
+--- a/tests/test_comfy.py
++++ b/tests/test_comfy.py
+@@ -9,6 +9,7 @@ from minimax_h3.comfy import (
+     STALL_TIMEOUT_SECONDS,
+     WEBSOCKET_TIMEOUT_SECONDS,
+     ComfyWorkflowStalled,
++    VramSampler,
+     start_comfyui,
+     submit_and_watch,
+ )
+@@ -123,5 +124,53 @@ class ComfyStartupTests(unittest.TestCase):
+         self.assertEqual(popen.call_args.kwargs["cwd"], COMFY_DIR)
+ 
+ 
++class VramSamplerTests(unittest.TestCase):
++    def _stats(self, free):
++        return {
++            "devices": [
++                {
++                    "name": "NVIDIA RTX PRO 6000",
++                    "type": "cuda",
++                    "vram_total": 100,
++                    "vram_free": free,
++                }
++            ]
++        }
++
++    @patch("minimax_h3.comfy.system_stats")
++    def test_keeps_the_high_water_mark_not_the_last_reading(self, stats):
++        # Memory is released before the workflow returns, so a single reading
++        # taken at the end reports almost nothing. The peak is the number.
++        stats.side_effect = [self._stats(90), self._stats(10), self._stats(95)]
++        sampler = VramSampler(interval=0.01)
++        for _ in range(3):
++            sampler._sample()
++
++        report = sampler.report()
++        self.assertEqual(report["peak_used_bytes"], 90)
++        self.assertEqual(report["total_bytes"], 100)
++        self.assertEqual(report["peak_used_fraction"], 0.9)
++        self.assertEqual(report["samples"], 3)
++        self.assertEqual(report["device"], "NVIDIA RTX PRO 6000")
++
++    @patch("minimax_h3.comfy.system_stats")
++    def test_an_unreachable_endpoint_reports_nothing_rather_than_zero(self, stats):
++        stats.side_effect = OSError("connection refused")
++        sampler = VramSampler(interval=0.01)
++        sampler._sample()
++
++        self.assertIsNone(sampler.report())
++
++    @patch("minimax_h3.comfy.system_stats")
++    def test_context_manager_samples_around_the_body(self, stats):
++        stats.return_value = self._stats(40)
++        with VramSampler(interval=30) as sampler:
++            pass
++
++        # Entry and exit both sample, so a workflow shorter than one interval
++        # still produces a reading.
++        self.assertEqual(sampler.report()["peak_used_bytes"], 60)
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tests/test_gateway.py b/tests/test_gateway.py
+index 5e4b977..ccb2184 100644
+--- a/tests/test_gateway.py
++++ b/tests/test_gateway.py
+@@ -537,6 +537,54 @@ class GatewayTests(unittest.TestCase):
+             parse_config("test", '{"resolution":"1080p"}')
+         with self.assertRaisesRegex(ValueError, "unknown or unavailable LoRAs"):
+             parse_config("test", '{"loras": {"not-configured": 1.0}}')
++        # The reference checkpoint travels in the request. It is normalized to
++        # an id so the job record says which one was chosen, not which one was
++        # omitted, and the worker resolves the same id to the same file.
++        default_checkpoint = parse_config("test", '{"mode":"references"}')
++        self.assertEqual(default_checkpoint["reference_checkpoint"], "ref2va")
++        chosen = parse_config(
++            "test", '{"mode":"references","reference_checkpoint":"fl2va"}'
++        )
++        self.assertEqual(chosen["reference_checkpoint"], "fl2va")
++        with self.assertRaisesRegex(ValueError, "reference_checkpoint must be one of"):
++            parse_config("test", '{"mode":"references","reference_checkpoint":"sdxl"}')
++        with self.assertRaisesRegex(ValueError, "valid only in references mode"):
++            parse_config("test", '{"reference_checkpoint":"fl2va"}')
++        # The accelerator is its own field. It defaults to the distillation
++        # matching the checkpoint, and any accelerator may be crossed onto any
++        # checkpoint on purpose.
++        matched = parse_config("test", '{"mode":"references"}')
++        self.assertEqual(matched["accelerator_lora"], "ref2v_turbo_4")
++        crossed = parse_config(
++            "test",
++            '{"mode":"references","reference_checkpoint":"ref2va",'
++            '"accelerator_lora":"fl2v_turbo_4"}',
++        )
++        self.assertEqual(crossed["accelerator_lora"], "fl2v_turbo_4")
++        # No 8-step ref2v distillation exists, so this falls back rather than
++        # making the combination unreachable.
++        fallback = parse_config(
++            "test",
++            '{"mode":"references","reference_checkpoint":"ref2va","sampling_profile":"turbo_8"}',
++        )
++        self.assertEqual(fallback["accelerator_lora"], "fl2v_turbo_8")
++        for profile in ("base", "spectrum"):
++            undistilled = parse_config(
++                "test",
++                '{"mode":"references","reference_checkpoint":"ref2va",'
++                f'"sampling_profile":"{profile}"}}',
++            )
++            self.assertEqual(undistilled["accelerator_lora"], "none")
++        self.assertEqual(
++            parse_config(
++                "test", '{"mode":"references","accelerator_lora":"none"}'
++            )["accelerator_lora"],
++            "none",
++        )
++        with self.assertRaisesRegex(ValueError, "accelerator_lora must be one of"):
++            parse_config("test", '{"mode":"references","accelerator_lora":"wan_turbo"}')
++        with self.assertRaisesRegex(ValueError, "valid only in references mode"):
++            parse_config("test", '{"accelerator_lora":"fl2v_turbo_4"}')
+         response = self.client.post(
+             "/api/jobs",
+             data={"prompt": "test", "width": "512"},
+diff --git a/tests/test_modal_service.py b/tests/test_modal_service.py
+index 268706e..cf30d4d 100644
+--- a/tests/test_modal_service.py
++++ b/tests/test_modal_service.py
+@@ -38,8 +38,10 @@ class ModalServiceDefinitionTests(unittest.TestCase):
+             source,
+         )
+         self.assertNotIn("ComfyUI-MiniMax-H3-Turbo", source)
++        # Moved forward from e6346777... so the Ref2V distillation, published
++        # after that revision, is reachable at all.
+         self.assertIn(
+-            'TURBO_REVISION = "e6346777701aa2b64d42ed058cdd71ae00e7cd52"',
++            'TURBO_REVISION = "ec01fa4c86263832faa0bd1d6d8f36a281eaabb2"',
+             source,
+         )
+         self.assertIn('TURBO_REPO = "lightx2v/Minimax-h3-Turbo"', source)
+diff --git a/tests/test_specs.py b/tests/test_specs.py
+index 8e5ed17..14cdd21 100644
+--- a/tests/test_specs.py
++++ b/tests/test_specs.py
+@@ -6,15 +6,15 @@ from minimax_h3.specs import get_specs, native_canvas
+ class SpecsTests(unittest.TestCase):
+     def test_authoritative_capabilities_snapshot(self):
+         specs = get_specs()
+-        self.assertEqual(specs["version"], "1.7")
++        self.assertEqual(specs["version"], "1.8")
+         self.assertTrue(specs["modes"]["references"]["available"])
+         self.assertEqual(
+             specs["modes"]["references"]["model"],
+-            "MiniMax-H3 Base FL2VA with reference conditioning",
++            "MiniMax-H3 Base Ref2VA",
+         )
+         self.assertEqual(
+             specs["modes"]["references"]["checkpoint"],
+-            "minimax_h3_fl2va_int8_convrot.safetensors",
++            "minimax_h3_ref2va_int8_convrot.safetensors",
+         )
+         self.assertEqual(specs["modes"]["references"]["ref_image_size"]["default"], "match")
+         self.assertEqual(specs["modes"]["references"]["order"], "upload_order")
+diff --git a/tests/test_workflow.py b/tests/test_workflow.py
+index 8295f7b..be234c7 100644
+--- a/tests/test_workflow.py
++++ b/tests/test_workflow.py
+@@ -188,7 +188,7 @@ class WorkflowTests(unittest.TestCase):
+         )
+         self.assertEqual(
+             workflow["model"]["inputs"]["unet_name"],
+-            "minimax_h3_fl2va_int8_convrot.safetensors",
++            "minimax_h3_ref2va_int8_convrot.safetensors",
+         )
+         self.assertEqual(workflow["conditioning"]["inputs"]["ref_image_size"], "match")
+         self.assertEqual(
+@@ -291,5 +291,123 @@ class WorkflowTests(unittest.TestCase):
+         self.assertEqual(workflow["guider"]["inputs"]["model"], ["style_lora_0", 0])
+ 
+ 
++class ReferenceCheckpointTests(unittest.TestCase):
++    REFERENCES = [
++        {"id": "blockout", "kind": "video", "slot": 0, "local_filename": "b.mp4"},
++        {"id": "look_1", "kind": "image", "slot": 0, "local_filename": "l.png"},
++    ]
++
++    def _unet(self, **kwargs):
++        workflow = build_reference_workflow(
++            prompt="Keep <Video 1>; use <Picture 1>.",
++            width=864,
++            height=480,
++            duration_seconds=5,
++            seed=7,
++            references=self.REFERENCES,
++            **kwargs,
++        )
++        return workflow["model"]["inputs"]["unet_name"]
++
++    def test_reference_conditioning_defaults_to_ref2va(self):
++        self.assertEqual(self._unet(), "minimax_h3_ref2va_int8_convrot.safetensors")
++
++    def test_the_checkpoint_is_a_request_parameter(self):
++        # The point of the whole field: an A/B between the two checkpoints is
++        # two jobs, not two deployments.
++        self.assertEqual(
++            self._unet(reference_checkpoint="fl2va"),
++            "minimax_h3_fl2va_int8_convrot.safetensors",
++        )
++        self.assertEqual(
++            self._unet(reference_checkpoint="ref2va"),
++            "minimax_h3_ref2va_int8_convrot.safetensors",
++        )
++
++    def test_an_unknown_id_is_rejected_rather_than_loaded(self):
++        # unet_name is a filename ComfyUI reads off the model volume, so an
++        # unrecognized id must never reach it.
++        for value in ["../etc/passwd", "minimax_h3_ref2va_int8_convrot.safetensors", "", 4]:
++            with self.assertRaises(ValueError):
++                self._unet(reference_checkpoint=value)
++
++    def _lora(self, **kwargs):
++        workflow = build_reference_workflow(
++            prompt="Keep <Video 1>; use <Picture 1>.",
++            width=864,
++            height=480,
++            duration_seconds=5,
++            seed=7,
++            references=self.REFERENCES,
++            **kwargs,
++        )
++        return (workflow.get("turbo_lora") or {}).get("inputs", {}).get("lora_name")
++
++    def test_the_accelerator_defaults_to_the_matching_distillation(self):
++        self.assertEqual(
++            self._lora(reference_checkpoint="ref2va", sampling_profile="turbo_4"),
++            "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
++        )
++        self.assertEqual(
++            self._lora(reference_checkpoint="fl2va", sampling_profile="turbo_4"),
++            "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
++        )
++        self.assertEqual(
++            self._lora(reference_checkpoint="fl2va", sampling_profile="turbo_8"),
++            "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
++        )
++
++    def test_any_accelerator_pairs_with_any_checkpoint(self):
++        # Crossing a distillation onto weights it was not made from is a real
++        # risk to quality and a legitimate question. It has to be reachable, or
++        # it cannot be answered.
++        self.assertEqual(
++            self._lora(reference_checkpoint="ref2va", accelerator_lora="fl2v_turbo_4"),
++            "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
++        )
++        self.assertEqual(
++            self._lora(reference_checkpoint="fl2va", accelerator_lora="ref2v_turbo_4"),
++            "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
++        )
++
++    def test_ref2va_with_turbo_8_falls_back_rather_than_refusing(self):
++        # There is no 8-step ref2v distillation. Defaulting to the fl2v one
++        # keeps the combination reachable; `none` is there when the crossing is
++        # not wanted.
++        self.assertEqual(
++            self._lora(reference_checkpoint="ref2va", sampling_profile="turbo_8"),
++            "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
++        )
++
++    def test_none_loads_no_accelerator_at_all(self):
++        self.assertIsNone(
++            self._lora(reference_checkpoint="ref2va", accelerator_lora="none")
++        )
++
++    def test_an_unknown_accelerator_is_rejected(self):
++        with self.assertRaisesRegex(ValueError, "accelerator_lora must be one of"):
++            self._lora(reference_checkpoint="ref2va", accelerator_lora="wan_turbo")
++
++    def test_the_undistilled_profiles_work_with_either_checkpoint(self):
++        # base and spectrum sample the checkpoint directly, so they need no
++        # matching distillation to exist.
++        for checkpoint in ("ref2va", "fl2va"):
++            for profile in ("base", "spectrum"):
++                self.assertIsNone(
++                    self._lora(reference_checkpoint=checkpoint, sampling_profile=profile),
++                    f"{checkpoint}/{profile} should load no accelerator LoRA",
++                )
++
++    def test_frames_mode_is_unaffected(self):
++        workflow = build_frames_workflow(
++            prompt="A lighthouse.", width=864, height=480,
++            duration_seconds=5, seed=7,
++        )
++        self.assertEqual(
++            workflow["model"]["inputs"]["unet_name"],
++            "minimax_h3_fl2va_int8_convrot.safetensors",
++        )
++
++
+ if __name__ == "__main__":
+     unittest.main()

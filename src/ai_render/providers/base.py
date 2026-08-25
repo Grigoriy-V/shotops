@@ -170,9 +170,16 @@ def download(url, out_path):
     return out_path
 
 
-def get_provider(name, model=None):
+def get_provider(name, model=None, **options):
     """`model` names the variant within a provider -- PiAPI task type, CometAPI
-    model id. None keeps the provider's own default."""
+    model id, H3 sampling profile. None keeps the provider's own default.
+
+    `options` carries per-provider knobs that have no equivalent elsewhere, so
+    they stay out of the shared signature. Only H3Zero takes any today
+    (`checkpoint`, `accelerator`); passing them to another provider is an
+    error rather than something silently dropped."""
+    if options and name not in ("h3", "h3zero"):
+        raise ValueError(f"provider {name!r} takes no options: {sorted(options)}")
     if name in ("piapi", "pi"):
         from .piapi import PiapiSeedance
 
@@ -184,5 +191,5 @@ def get_provider(name, model=None):
     if name in ("h3", "h3zero"):
         from .h3zero import H3Zero
 
-        return H3Zero(sampling_profile=model)
+        return H3Zero(sampling_profile=model, **options)
     raise ValueError(f"unknown provider {name!r} (available: piapi, comet, h3zero)")

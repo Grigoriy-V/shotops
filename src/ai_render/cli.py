@@ -21,6 +21,13 @@ from . import (
 )
 from .providers import get_provider
 from .providers.base import unbound_image_tags
+# Imported at module level only for the argument choices; the provider itself
+# stays lazily imported so a run that never touches H3 never loads it.
+from .providers.h3zero import (
+    ACCELERATORS as H3_ACCELERATORS,
+    CHECKPOINTS as H3_CHECKPOINTS,
+    NO_ACCELERATOR as H3_NO_ACCELERATOR,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTRACT_SCRIPT = ROOT / "blender" / "extract_frames.py"
@@ -77,14 +84,35 @@ def cmd_check(args):
             return 1
     h3zero = generation.get("h3zero")
     if h3zero:
-        from .providers.h3zero import validate_h3_prompt
+        from .providers.h3zero import expected_tags, validate_h3_prompt
 
+        if not references:
+            print(
+                "error: H3Zero needs at least one look reference; add 'style_references'",
+                file=sys.stderr,
+            )
+            return 1
         try:
             validate_h3_prompt(h3zero.get("full_prompt"), len(references))
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
-        print("ok -- H3Zero prompt binds <Video 1> and its picture references")
+        checkpoint = h3zero.get("checkpoint", "ref2va")
+        profile = h3zero.get("sampling_profile", "turbo_4")
+        accelerator = h3zero.get("accelerator_lora")
+        tags = expected_tags(len(references))
+        print(f"ok -- H3Zero {checkpoint} + {profile}")
+        if accelerator in H3_ACCELERATORS and H3_ACCELERATORS[accelerator] != checkpoint:
+            # Not an error. A distillation carries deltas for the weights it
+            # came from, so this is worth saying out loud -- and it is also a
+            # thing you might be doing on purpose.
+            print(
+                f"note: accelerator {accelerator} was distilled from "
+                f"{H3_ACCELERATORS[accelerator]}, not {checkpoint}"
+            )
+        print(f"ok -- H3Zero prompt binds {', '.join(tags)}")
+        for tag, name in zip(tags[1:], references):
+            print(f"        {tag} <- {name}")
     return 0
 
 
@@ -304,9 +332,31 @@ def cmd_generate(args):
         )
         return 2
 
-    provider = get_provider(args.provider, model=model)
+    provider_options = {}
+    if is_h3:
+        # Two independent knobs, both switchable per run: which checkpoint
+        # conditions on the references, and which step distillation rides on
+        # top of it. They are not tied to each other -- crossing them is a
+        # question worth being able to ask.
+        provider_options = {
+            "checkpoint": args.checkpoint,
+            "accelerator": args.lora,
+        }
+    elif args.checkpoint or args.lora:
+        print(
+            "error: --checkpoint and --lora apply to the h3zero provider only",
+            file=sys.stderr,
+        )
+        return 2
+
+    provider = get_provider(args.provider, model=model, **provider_options)
     resolved_model = getattr(provider, "task_type", None) or getattr(provider, "model", "default")
-    resolved_resolution = getattr(provider, "resolution", None) or generation.get("resolution", "720p")
+    # The scene decides; the provider only fills in when the scene is silent,
+    # because a provider default is about what the endpoint can do, not about
+    # what this shot asked for.
+    resolved_resolution = (
+        generation.get("resolution") or getattr(provider, "resolution", None) or "720p"
+    )
     out_dir = runs.new_generation(take, resolved_model, resolved_resolution)
 
     runs.write_manifest(
@@ -315,6 +365,19 @@ def cmd_generate(args):
         take=take.name,
         provider=provider.name,
         model=resolved_model,
+        # Which checkpoint conditions on the references, when the provider has
+        # a choice. Recorded separately from `model` because the model here is
+        # the sampling profile, and the two are independent.
+        checkpoint=(
+            getattr(provider, "checkpoint", None) or h3_config.get("checkpoint")
+            if is_h3
+            else None
+        ),
+        accelerator_lora=(
+            getattr(provider, "accelerator", None) or h3_config.get("accelerator_lora")
+            if is_h3
+            else None
+        ),
         generation=generation,
         uploader=getattr(provider, "uploader", None) or upload.configured_name(),
         style_references=[str(_rel(p)) for p in style_images],
@@ -510,6 +573,19 @@ def main(argv=None):
                 "--model",
                 help="model variant within the provider: PiAPI task type (seedance-2) or "
                 "H3 sampling profile (turbo_4). Beats the provider's scene and env setting.",
+            )
+            p.add_argument(
+                "--checkpoint",
+                choices=sorted(H3_CHECKPOINTS),
+                help="h3zero only: which checkpoint conditions on the references. "
+                "Beats the scene and AI_RENDER_H3ZERO_CHECKPOINT.",
+            )
+            p.add_argument(
+                "--lora",
+                choices=[*sorted(H3_ACCELERATORS), H3_NO_ACCELERATOR],
+                help="h3zero only: which step-distillation LoRA to load. Defaults to the "
+                "one distilled from --checkpoint; any of them may be crossed onto any "
+                "checkpoint. Beats the scene and AI_RENDER_H3ZERO_LORA.",
             )
             p.add_argument(
                 "--extract",

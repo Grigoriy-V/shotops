@@ -186,6 +186,20 @@ def validate(spec):
                     "generation.h3zero.sampling_profile",
                     "must be turbo_4, turbo_8, spectrum, or base",
                 )
+            if h3zero.get("checkpoint", "ref2va") not in {"ref2va", "fl2va"}:
+                _fail(
+                    "generation.h3zero.checkpoint",
+                    "must be ref2va (reference-conditioned, the default) or fl2va",
+                )
+            accelerator = h3zero.get("accelerator_lora")
+            if accelerator is not None and accelerator not in {
+                "fl2v_turbo_4", "fl2v_turbo_8", "ref2v_turbo_4", "none",
+            }:
+                _fail(
+                    "generation.h3zero.accelerator_lora",
+                    "must be fl2v_turbo_4, fl2v_turbo_8, ref2v_turbo_4, or none; "
+                    "omit it to take the one distilled from the chosen checkpoint",
+                )
         mode = generation.get("reference_mode", "video")
         if mode not in KNOWN_REFERENCE_MODES:
             _fail(

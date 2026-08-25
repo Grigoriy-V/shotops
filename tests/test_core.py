@@ -714,7 +714,12 @@ check("no url found -> None", CometSeedance._extract_url({"status": "completed"}
 
 print("providers -- registry and piapi guards")
 from ai_render.providers.piapi import PiapiSeedance  # noqa: E402
-from ai_render.providers.h3zero import H3Zero, validate_h3_prompt  # noqa: E402
+from ai_render.providers.h3zero import (  # noqa: E402
+    H3Zero,
+    expected_tags,
+    validate_h3_prompt,
+    verify_reference_tags,
+)
 
 check("default provider is piapi", get_provider("piapi").name == "piapi/seedance", True)
 check("comet still reachable", get_provider("comet").name == "cometapi/seedance", True)
@@ -800,16 +805,37 @@ h3_captured = {}
 h3 = H3Zero(sampling_profile="turbo_4", poll_interval=0.0)
 
 
+# The tags in this echo are the gateway's, not ours: it assigns them from the
+# order of the declarations we send, and the provider checks them back.
+H3_ECHOED_REFERENCES = [
+    {"id": "blockout", "kind": "video", "slot": 0, "tags": ["<Video 1>"]},
+    {"id": "look_1", "kind": "image", "slot": 0, "tags": ["<Picture 1>"]},
+]
+
+
 def _h3_request(method, path, form=None, files=None):
     if method == "POST" and path == "/api/jobs":
         h3_events.append("submit")
         h3_captured["prompt"] = form["prompt"]
         h3_captured["config"] = json.loads(form["config"])
         h3_captured["files"] = files
-        return 202, {"id": "h3-job-42"}
+        return 202, {"id": "h3-job-42", "request": {"references": H3_ECHOED_REFERENCES}}
     if method == "GET":
         h3_events.append("poll")
-        return 200, {"id": "h3-job-42", "status": "completed", "progress": {"phase": "done"}}
+        return 200, {
+            "id": "h3-job-42",
+            "status": "completed",
+            "progress": {"phase": "done"},
+            "result": {
+                "model": "MiniMax-H3-Ref2VA",
+                "vram": {
+                    "device": "NVIDIA RTX PRO 6000",
+                    "peak_used_gib": 71.5,
+                    "total_gib": 95.0,
+                    "peak_used_fraction": 0.7526,
+                },
+            },
+        }
     if method == "POST" and path.endswith("/acknowledge"):
         h3_events.append("ack")
         return 204, None
@@ -850,12 +876,171 @@ with _tempfile.TemporaryDirectory() as tmp:
     )
 
 check("h3 task id is saved before polling", h3_events[:3], ["submit", "id:h3-job-42", "poll"])
-check("h3 acknowledges only after download", h3_events[-2:], ["download", "ack"])
+# Acknowledging deletes the job, its staged references and the MP4 from the
+# Modal volume. The run has to stay inspectable after the download.
+check("h3 never acknowledges", "ack" in h3_events, False)
+check("h3 ends on the download", h3_events[-1], "download")
 check("h3 uses its own verbatim prompt", h3_captured["prompt"], "Keep <Video 1>; use <Picture 1> for appearance.")
 check("h3 submits references mode", h3_captured["config"]["mode"], "references")
 check("h3 submits native 480p canvas", (h3_captured["config"]["width"], h3_captured["config"]["height"]), (864, 480))
+check("h3 names the resolution tier", h3_captured["config"]["resolution"], "480p")
 check("h3 reference upload order is stable", [item[0] for item in h3_captured["files"]], ["reference_0", "reference_1"])
 check("h3 blockout is Video 1", h3_captured["config"]["references"][0]["kind"], "video")
+
+check("h3 expects video first, then pictures", expected_tags(3),
+      ["<Video 1>", "<Picture 1>", "<Picture 2>", "<Picture 3>"])
+check("h3 accepts a matching tag echo",
+      verify_reference_tags({"request": {"references": H3_ECHOED_REFERENCES}}, 1),
+      [("blockout", "<Video 1>"), ("look_1", "<Picture 1>")])
+check("h3 tolerates a gateway that echoes nothing",
+      verify_reference_tags({"request": {}}, 1), None)
+# A shifted tag uploads every file successfully and binds each name to the
+# wrong one, so it has to be caught rather than logged.
+for label, echoed, count in [
+    ("pictures out of order", [
+        {"id": "blockout", "tags": ["<Video 1>"]},
+        {"id": "look_1", "tags": ["<Picture 2>"]},
+        {"id": "look_2", "tags": ["<Picture 1>"]},
+    ], 2),
+    ("the blockout read as a picture", [
+        {"id": "blockout", "tags": ["<Picture 1>"]},
+        {"id": "look_1", "tags": ["<Picture 2>"]},
+    ], 1),
+    ("a reference silently dropped", [{"id": "blockout", "tags": ["<Video 1>"]}], 1),
+]:
+    try:
+        verify_reference_tags({"request": {"references": echoed}}, count)
+        failures.append(f"h3 tag check {label}: expected RuntimeError")
+        print(f"  FAIL h3 catches {label}")
+    except RuntimeError:
+        print(f"  ok   h3 catches {label}")
+
+# A look reference is not optional here: without one the only picture of the
+# scene H3 has is the grey blockout.
+try:
+    h3.generate(
+        Path("blockout.mp4"),
+        {"reference_mode": "video", "duration": 5,
+         "h3zero": {"full_prompt": "Keep <Video 1>."}},
+        Path("out.mp4"),
+        style_images=[],
+    )
+    failures.append("h3 without style frames: expected ValueError")
+    print("  FAIL h3 requires a look reference")
+except ValueError:
+    print("  ok   h3 requires a look reference")
+
+for label, gen in [
+    ("a four-second output the gateway would reject", {"duration": 4}),
+    ("an unknown resolution tier", {"duration": 5, "resolution": "1080p"}),
+    ("a silent clip it cannot deliver", {"duration": 5, "generate_audio": False}),
+]:
+    try:
+        H3Zero()._settings(
+            {"reference_mode": "video", "aspect_ratio": "16:9",
+             "h3zero": {"full_prompt": "Keep <Video 1>; use <Picture 1>."}, **gen},
+            [Path("look.png")],
+        )
+        failures.append(f"h3 {label}: expected ValueError")
+        print(f"  FAIL h3 rejects {label}")
+    except ValueError:
+        print(f"  ok   h3 rejects {label}")
+
+check("h3 resolves the 768p native canvas",
+      H3Zero()._settings(
+          {"reference_mode": "video", "aspect_ratio": "16:9", "duration": 5,
+           "resolution": "768p",
+           "h3zero": {"full_prompt": "Keep <Video 1>; use <Picture 1>."}},
+          [Path("look.png")],
+      )[5:8],
+      (1344, 768, "768p"))
+
+
+def _h3_checkpoint(scene_value=None, env_value=None):
+    """Resolve the checkpoint the way `generate` would, and return it."""
+    saved = os.environ.get("AI_RENDER_H3ZERO_CHECKPOINT")
+    if env_value is None:
+        os.environ.pop("AI_RENDER_H3ZERO_CHECKPOINT", None)
+    else:
+        os.environ["AI_RENDER_H3ZERO_CHECKPOINT"] = env_value
+    h3zero = {"full_prompt": "Keep <Video 1>; use <Picture 1>."}
+    if scene_value is not None:
+        h3zero["checkpoint"] = scene_value
+    try:
+        return H3Zero()._settings(
+            {"reference_mode": "video", "aspect_ratio": "16:9", "duration": 5,
+             "h3zero": h3zero},
+            [Path("look.png")],
+        )[8]
+    finally:
+        if saved is None:
+            os.environ.pop("AI_RENDER_H3ZERO_CHECKPOINT", None)
+        else:
+            os.environ["AI_RENDER_H3ZERO_CHECKPOINT"] = saved
+
+
+# The checkpoint is a request field, so an A/B is two runs rather than two
+# deployments. The environment beats the scene here -- the opposite of the
+# sampling profile -- because it exists to be flipped for one comparison run
+# without editing and committing the shot.
+check("h3 defaults to the reference-conditioned checkpoint", _h3_checkpoint(), "ref2va")
+check("h3 takes the checkpoint from the scene", _h3_checkpoint(scene_value="fl2va"), "fl2va")
+check("h3 lets the environment win for a one-off comparison",
+      _h3_checkpoint(scene_value="ref2va", env_value="fl2va"), "fl2va")
+try:
+    _h3_checkpoint(scene_value="sdxl")
+    failures.append("h3 unknown checkpoint: expected ValueError")
+    print("  FAIL h3 rejects an unknown checkpoint")
+except ValueError:
+    print("  ok   h3 rejects an unknown checkpoint")
+check("h3 sends the checkpoint in the request",
+      h3_captured["config"]["reference_checkpoint"], "ref2va")
+
+
+def _h3_settings(scene=None, **provider_options):
+    h3zero = {"full_prompt": "Keep <Video 1>; use <Picture 1>.", **(scene or {})}
+    return H3Zero(**provider_options)._settings(
+        {"reference_mode": "video", "aspect_ratio": "16:9", "duration": 5,
+         "h3zero": h3zero},
+        [Path("look.png")],
+    )
+
+
+# The checkpoint and the accelerator are two independent knobs. A distillation
+# does carry deltas for the weights it came from, so crossing them is a real
+# risk -- but it is a question, not a mistake, and answering it needs the
+# combination to be reachable rather than refused.
+check("h3 leaves the accelerator to the service by default",
+      _h3_settings()[9], None)
+check("h3 takes the accelerator from the scene",
+      _h3_settings({"accelerator_lora": "fl2v_turbo_4"})[9], "fl2v_turbo_4")
+check("h3 lets a flag cross a distillation onto the other checkpoint",
+      _h3_settings({"checkpoint": "ref2va"}, accelerator="fl2v_turbo_8")[8:10],
+      ("ref2va", "fl2v_turbo_8"))
+check("h3 accepts an explicit no-accelerator run",
+      _h3_settings({"accelerator_lora": "none"})[9], "none")
+check("h3 no longer ties the profile to the checkpoint",
+      _h3_settings({"checkpoint": "ref2va", "sampling_profile": "turbo_8"})[3],
+      "turbo_8")
+try:
+    _h3_settings({"accelerator_lora": "wan_turbo"})
+    failures.append("h3 unknown accelerator: expected ValueError")
+    print("  FAIL h3 rejects an unknown accelerator")
+except ValueError:
+    print("  ok   h3 rejects an unknown accelerator")
+
+# Both knobs reach the provider constructor, which is what the CLI flags use.
+h3_flagged = get_provider("h3zero", model="turbo_8", checkpoint="fl2va",
+                          accelerator="ref2v_turbo_4")
+check("h3 flags reach the provider",
+      (h3_flagged.model, h3_flagged.checkpoint, h3_flagged.accelerator),
+      ("turbo_8", "fl2va", "ref2v_turbo_4"))
+try:
+    get_provider("piapi", checkpoint="ref2va")
+    failures.append("piapi options: expected ValueError")
+    print("  FAIL provider options are refused where they mean nothing")
+except ValueError:
+    print("  ok   provider options are refused where they mean nothing")
 
 try:
     get_provider("comet").generate(
