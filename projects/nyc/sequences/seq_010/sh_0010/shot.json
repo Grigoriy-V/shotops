@@ -2,6 +2,13 @@
   "scene": "street_a",
   "duration": 10.0,
   "generation": {
-    "duration": 10
+    "model": "seedance-2-fast",
+    "duration": 10,
+    "style_references": [
+      "styleframes/lookref_a.png",
+      "styleframes/lookref_b.png",
+      "styleframes/lookref_c.png"
+    ],
+    "full_prompt": "Maintain the camera movement, composition, and object positions from Video 1.\nVideo 1 is only a guide for movement and composition. Don't rely on the appearance of the objects or the reference video. The appearance is determined solely by the reference images.\nUse Image 1, Image 2, and Image 3 as visual style guides.\n\nThese colorful, comic-book-style frames, shot on 20mm anamorphic film, depict a busy city street at golden hour. The low sun glides down the street ahead, the warm amber light casting long shadows and highlights through the haze and rising dust. Above the rooftops, a view opens onto a wide bay at sunset, the silhouette of a long suspension bridge, and distant towers bathed in orange light."
   }
 }

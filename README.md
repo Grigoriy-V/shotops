@@ -347,7 +347,7 @@ projects/nyc/
   sequences/seq_010/
     sequence.json
     sh_0010/
-      shot.json                 <- duration, and which scene the shot currently is
+      shot.json                 <- duration, which scene the shot is, and how it generates
       brief.md                  <- the authored intent
       notes.md                  <- what building it taught
       street_a.json             <- a scene: one way of staging the shot
@@ -363,6 +363,13 @@ Resolution order, most specific wins: scene → shot → sequence → project.
 Several scenes in one shot are **parallel variants**, never segments: a shot is
 one of its scenes, never an assembly of them. Point a command at a shot directory
 and it renders the scene `shot.json` selects.
+
+Which is why the **`generation` block belongs in `shot.json`**, not in the scene.
+The prompt, the model and the look references describe the shot being delivered;
+the scenes under it are competing ways to stage that same shot. Put them in one
+scene and the variant beside it is generated differently, so the comparison
+stops being about the staging. A scene may still override a field when the
+variant is specifically a test of that field.
 
 Numbering goes up in tens — `sh_0010`, `sh_0020` — so inserting a shot later is a
 naming problem that is already solved rather than a renumbering that invalidates
@@ -520,6 +527,8 @@ without Blender installed.
     "animation": { "location": [ ... ], "look_at": [ ... ] }
   },
 
+  // `generation` is shown here because it is what a merged spec looks like.
+  // Author it in shot.json -- see above.
   "generation": {
     "prompt": "A polished dark-granite monolith rotating in a brutalist hall...",
     // ...or "full_prompt", sent byte for byte with no contract prepended
@@ -562,7 +571,7 @@ prepends the reference contract itself. Everything spatial — blocking, framing
 camera path — comes from the blockout; the prompt's job is only to say what the
 surfaces are made of and how they are lit.
 
-`style_references` are paths relative to the scene file, and **order is
+`style_references` are paths relative to the shot directory, and **order is
 meaning**: the first becomes `@image1`. When any are present the contract adds
 the sentence that decides the shot — *appearance is determined solely by the
 images* — and tells the model to take no framing from them. Repeated `--style`

@@ -50,6 +50,13 @@ spec where real changes hide among boilerplate.
 Resolution order, most specific wins: scene → shot → sequence → project →
 built-in defaults.
 
+**`generation` sits at the shot level, and that is not a default — it is where
+it belongs.** The prompt, the model and the look references describe the shot
+being delivered. The scenes beneath it are parallel variants, competing ways to
+stage the same thing, and a comparison between two of them means nothing if they
+were generated differently. A scene overrides a generation field only when that
+field is the thing the variant exists to test.
+
 ## Numbering
 
 Studio convention, and it earns its keep: `seq_010`, `sh_0010`, incrementing by

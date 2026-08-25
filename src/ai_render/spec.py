@@ -175,7 +175,7 @@ def validate(spec):
                 if not isinstance(ref, str) or not ref.strip():
                     _fail(
                         f"generation.style_references[{index}]",
-                        f"must be a non-empty path relative to the scene file, got {ref!r}",
+                        f"must be a non-empty path relative to the shot directory, got {ref!r}",
                     )
 
     stills = spec.get("render", {}).get("stills", 8)

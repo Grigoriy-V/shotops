@@ -214,14 +214,14 @@ def cmd_sheet(args):
 def _style_references(flags, generation, target, take):
     """The `@image1..N` look references, in tag order.
 
-    Three sources, most explicit first: repeated `--style` flags, the scene's
-    own `generation.style_references`, and finally a `styleframe.png` sitting in
-    the take. The scene's list is the one that matters -- a look that lives in a
-    flag is a look nobody can reproduce, and the run that fixed the NYC shot was
-    unrepeatable for exactly that reason.
+    Three sources, most explicit first: repeated `--style` flags, the merged
+    spec's `generation.style_references`, and finally a `styleframe.png` sitting
+    in the take. The spec's list is the one that matters -- a look that lives in
+    a flag is a look nobody can reproduce, and the run that fixed the NYC shot
+    was unrepeatable for exactly that reason.
 
-    Spec paths resolve against the scene file, not the working directory, so a
-    shot carries its references with it.
+    Spec paths resolve against the shot directory, not the working directory, so
+    a shot carries its references with it.
     """
     if flags:
         paths = [Path(f) for f in flags]

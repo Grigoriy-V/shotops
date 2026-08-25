@@ -115,10 +115,16 @@ cheap and answers the question a frame cannot — where everything is, and where
 the camera actually goes.
 
 **A run that only exists in a flag is a run nobody can repeat.** Model, prompt
-and `style_references` belong in the scene's `generation` block. Flags are for
-probing without editing the scene; the moment a configuration is the right one,
+and `style_references` go in `shot.json`'s `generation` block. Flags are for
+probing without editing anything; the moment a configuration is the right one,
 it goes in the file. This is the whole premise — a shot whose best version lives
 in a chat log is not source-controlled, whatever the repository says.
+
+**`generation` belongs to the shot, not to the scene.** The prompt and the look
+references describe what is being delivered; the scenes under a shot are
+competing ways to stage that same thing, and they have to be generated
+identically or the comparison is worthless. A scene overrides a generation field
+only when that field is what the variant is testing.
 
 **Do not rewrite a prompt that has been run and judged good.** `full_prompt`
 sends the scene's text byte for byte with nothing prepended, and that is the

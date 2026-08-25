@@ -267,9 +267,10 @@ seconds — which is where close-range dressing fails.
 *Added after the fact.* 002 and 003 were run in the playground, so for a while
 the best result in the project could not be reproduced by the project: the spec
 still said `seedance-2-mini`, a photorealistic prompt and no look references.
-That is now closed. `street_a.json` carries the model, the comic-book prompt and
-the three references, and `build_reference_prompt` generates the ownership
-sentence whenever references are attached.
+That is now closed. `shot.json` carries the model, the prompt and the three
+references — the shot's `generation` block, not the scene's, because
+`street_a.json` and any variant beside it have to be generated identically or
+the comparison between them says nothing about the staging.
 
 **The prompt goes out exactly as it was tested.** The first attempt at this
 regenerated the contract from the pipeline's own template — more specific about
