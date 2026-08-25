@@ -602,3 +602,45 @@ exactly** — it would send the cheaper tier. That is on purpose: if the refusal
 were noise rather than the tier, `fast` is the honest default and 9% cheaper, and
 006 gives no reason to believe otherwise. The flag is how a run departs from the
 config; this entry is the record of which one did.
+
+## 007 — H3Zero / MiniMax H3 `turbo_4`, protected Modal deployment
+
+The first H3 test completed on the first submitted job. It used the 10-second
+blockout, three ordered look references, the shot's verbatim
+`generation.h3zero.full_prompt`, the `turbo_4` four-step LoRA, and an 864 x 480
+canvas. H3Zero job `b6b795e4f74c41688589dbf0f37f3026` ran from 16:33:42 to
+16:36:36 UTC end to end and produced a 4.3 MB MP4. The protected gateway was
+checked before submission: an anonymous request returned 401 and an
+authenticated health request returned 200 without invoking the GPU.
+
+The matched-time evidence is
+`artifacts/seq_010_sh_0010_street_a_e64594_sheet_v011_vs_render_v005.jpg`;
+the kept result is
+`render/seq_010_sh_0010_street_a_e64594_render_v005.mp4`.
+
+### What held
+
+The overall camera story holds: the result starts in the street, rises above
+the buildings, and finishes on the bay and skyline. The comic-book treatment,
+golden-hour colour, haze, suspension bridge, and distant towers are strong and
+coherent through the full sampled timeline. The three look references clearly
+control appearance rather than copying the grey blockout.
+
+### What did not hold
+
+This is not an exact structural reproduction. By 43% the blockout camera is
+close to a facade that fills most of the frame, while H3 has already opened into
+an aerial rooftop view. In the final third the skyline composition is stable,
+but the blockout's large right-side cylinder is not preserved at the same
+position or scale. The result follows the semantic trajectory much better than
+the exact composition, object positions, and shot scale requested by the
+prompt.
+
+### Cost evidence
+
+The Modal CLI does not expose a final invoice for this individual run. The
+observed end-to-end wall time was 174 seconds and the four diffusion steps took
+about 66 seconds after model initialization. At the deployment-time RTX PRO
+6000 list rate, GPU compute is estimated below roughly $0.15 for this cold run;
+CPU gateway/build work and persistent storage are separate. This is an
+estimate, not a billed figure.

@@ -40,12 +40,13 @@ honour your camera.
 H3Zero is a self-hosted MiniMax H3 route and accepts the blockout plus look
 references directly as multipart uploads. It does not use Supabase. Deploy the
 endpoint with Modal proxy authentication, set its URL, and use the local Modal
-profile for an interactive test:
+proxy token for an interactive test:
 
 ```ini
 AI_RENDER_H3ZERO_URL=https://<workspace>--minimax-h3-web.modal.run
-AI_RENDER_H3ZERO_AUTH=modal-cli
-AI_RENDER_H3ZERO_MODAL_PYTHON=.tools\h3zero\.venv\Scripts\python.exe
+AI_RENDER_H3ZERO_AUTH=modal-proxy
+AI_RENDER_H3ZERO_MODAL_KEY=<dedicated proxy token id>
+AI_RENDER_H3ZERO_MODAL_SECRET=<dedicated proxy token secret>
 ```
 
 ```powershell
@@ -70,9 +71,13 @@ scene hierarchy:
 
 H3 reference tags are case-sensitive and differ from Seedance: `<Video 1>` and
 `<Picture 1>`. The H3 prompt is therefore separate; the provider never rewrites
-or reuses a tested top-level `full_prompt`. The endpoint is called through
-`modal curl` by default, so the Modal account token stays in the Modal profile.
-For unattended use, configure a dedicated Modal proxy bearer token instead.
+or reuses a tested top-level `full_prompt`. Create and store a dedicated Modal
+proxy token without exposing it in shell history:
+
+```powershell
+python tools/configure_h3zero_modal.py `
+  --url https://<workspace>--minimax-h3-web.modal.run
+```
 
 ### Choosing the model
 

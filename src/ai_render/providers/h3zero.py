@@ -2,10 +2,9 @@
 
 H3Zero accepts the blockout and look references directly as multipart files, so
 this provider deliberately bypasses ``upload.py``.  The endpoint should be
-deployed with Modal proxy authentication.  Locally, ``modal curl`` can use the
-already configured Modal profile without copying its credentials into this
-repository.  A separate proxy bearer token is also supported for unattended
-clients.
+deployed with Modal proxy authentication.  Its dedicated ``Modal-Key`` and
+``Modal-Secret`` values live in the gitignored ``.env`` and are sent as request
+headers.  A separate bearer token is also supported for non-Modal gateways.
 
 H3's reference grammar is not Seedance's grammar.  Prompts here live under
 ``generation.h3zero.full_prompt`` and use case-sensitive ``<Video 1>`` and
@@ -107,13 +106,38 @@ class H3Zero(VideoProvider):
         explicit = os.environ.get("AI_RENDER_H3ZERO_AUTH")
         if explicit:
             mode = explicit.lower()
+        elif os.environ.get("AI_RENDER_H3ZERO_MODAL_KEY") or os.environ.get(
+            "AI_RENDER_H3ZERO_MODAL_SECRET"
+        ):
+            mode = "modal-proxy"
         elif os.environ.get("AI_RENDER_H3ZERO_TOKEN"):
             mode = "bearer"
         else:
-            mode = "modal-cli"
-        if mode not in {"modal-cli", "bearer", "none"}:
-            raise ValueError("AI_RENDER_H3ZERO_AUTH must be modal-cli, bearer, or none")
+            mode = "modal-proxy"
+        if mode not in {"modal-proxy", "modal-cli", "bearer", "none"}:
+            raise ValueError(
+                "AI_RENDER_H3ZERO_AUTH must be modal-proxy, modal-cli, bearer, or none"
+            )
         return mode
+
+    @classmethod
+    def _auth_headers(cls):
+        mode = cls._auth_mode()
+        if mode == "modal-proxy":
+            key = os.environ.get("AI_RENDER_H3ZERO_MODAL_KEY")
+            secret = os.environ.get("AI_RENDER_H3ZERO_MODAL_SECRET")
+            if not key or not secret:
+                raise RuntimeError(
+                    "AI_RENDER_H3ZERO_MODAL_KEY and AI_RENDER_H3ZERO_MODAL_SECRET "
+                    "are required for Modal proxy auth"
+                )
+            return {"Modal-Key": key, "Modal-Secret": secret}
+        if mode == "bearer":
+            token = os.environ.get("AI_RENDER_H3ZERO_TOKEN")
+            if not token:
+                raise RuntimeError("AI_RENDER_H3ZERO_TOKEN is required for bearer auth")
+            return {"Authorization": f"Bearer {token}"}
+        return {}
 
     @staticmethod
     def _modal_python():
@@ -159,12 +183,7 @@ class H3Zero(VideoProvider):
 
         import requests
 
-        headers = {}
-        if self._auth_mode() == "bearer":
-            token = os.environ.get("AI_RENDER_H3ZERO_TOKEN")
-            if not token:
-                raise RuntimeError("AI_RENDER_H3ZERO_TOKEN is required for bearer auth")
-            headers["Authorization"] = f"Bearer {token}"
+        headers = self._auth_headers()
         with ExitStack() as stack:
             uploads = {}
             for field, file_path, media_type in files or []:
@@ -193,12 +212,11 @@ class H3Zero(VideoProvider):
 
         import requests
 
-        headers = {"User-Agent": "ai_render/0.1", "Accept": "video/mp4"}
-        if self._auth_mode() == "bearer":
-            token = os.environ.get("AI_RENDER_H3ZERO_TOKEN")
-            if not token:
-                raise RuntimeError("AI_RENDER_H3ZERO_TOKEN is required for bearer auth")
-            headers["Authorization"] = f"Bearer {token}"
+        headers = {
+            "User-Agent": "ai_render/0.1",
+            "Accept": "video/mp4",
+            **self._auth_headers(),
+        }
         out = Path(out_path)
         out.parent.mkdir(parents=True, exist_ok=True)
         with requests.get(f"{self.base_url}{path}", headers=headers, stream=True, timeout=300) as response:

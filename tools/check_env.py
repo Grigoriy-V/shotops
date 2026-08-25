@@ -3,6 +3,7 @@
     python tools/check_env.py
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -27,7 +28,7 @@ loaded = env.load()
 
 
 def is_set(name):
-    value = loaded.get(name, "")
+    value = os.environ.get(name, "")
     # The example file ships placeholders; those are not real values.
     return bool(value) and "<" not in value
 
@@ -52,6 +53,19 @@ for name, description in SUPABASE:
 print("\nProviders (at least one):")
 for name, description in PROVIDERS:
     print(f"  {'set    ' if is_set(name) else '-      '}  {name:22} {description}")
+
+if h3_ready:
+    h3_auth = os.environ.get("AI_RENDER_H3ZERO_AUTH", "modal-proxy").lower()
+    print(f"\nH3Zero auth: {h3_auth}")
+    if h3_auth == "modal-proxy":
+        for name in ("AI_RENDER_H3ZERO_MODAL_KEY", "AI_RENDER_H3ZERO_MODAL_SECRET"):
+            ok = is_set(name)
+            print(f"  {'set    ' if ok else 'MISSING'}  {name}")
+            if not ok:
+                missing.append(name)
+    elif h3_auth == "bearer" and not is_set("AI_RENDER_H3ZERO_TOKEN"):
+        print("  MISSING  AI_RENDER_H3ZERO_TOKEN")
+        missing.append("AI_RENDER_H3ZERO_TOKEN")
 
 print()
 if not any(is_set(name) for name, _ in PROVIDERS):

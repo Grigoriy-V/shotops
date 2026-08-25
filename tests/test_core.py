@@ -758,6 +758,29 @@ for provider_name in ("piapi", "comet", "h3zero"):
 
 print("h3zero -- prompt grammar and direct multipart job")
 validate_h3_prompt("Keep <Video 1>; use <Picture 1>.", 1)
+saved_h3_auth = {
+    name: os.environ.get(name)
+    for name in (
+        "AI_RENDER_H3ZERO_AUTH",
+        "AI_RENDER_H3ZERO_MODAL_KEY",
+        "AI_RENDER_H3ZERO_MODAL_SECRET",
+    )
+}
+try:
+    os.environ["AI_RENDER_H3ZERO_AUTH"] = "modal-proxy"
+    os.environ["AI_RENDER_H3ZERO_MODAL_KEY"] = "wk-test"
+    os.environ["AI_RENDER_H3ZERO_MODAL_SECRET"] = "ws-test"
+    check(
+        "h3 modal proxy credentials become request headers",
+        H3Zero._auth_headers(),
+        {"Modal-Key": "wk-test", "Modal-Secret": "ws-test"},
+    )
+finally:
+    for name, value in saved_h3_auth.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
 for label, prompt, pictures in [
     ("lowercase tag", "Keep <video 1>.", 0),
     ("missing video", "Use <Picture 1>.", 1),

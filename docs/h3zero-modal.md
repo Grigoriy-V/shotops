@@ -29,10 +29,13 @@ The patch changes only the ASGI decorator and requires Modal proxy
 authentication. Do not deploy the upstream public default: its job endpoint can
 allocate an RTX PRO 6000 for anyone who discovers the URL.
 
-For an interactive local client, `modal curl` obtains short-lived endpoint
-authorization from the existing Modal profile. It does not copy the Modal
-account token into this repository. For unattended clients, create a dedicated
-Modal proxy token and keep it in the gitignored `.env`.
+The `.modal.run` ASGI endpoint uses a dedicated workspace proxy token. Create
+and store it in the gitignored `.env` without exposing it in shell history:
+
+```powershell
+python tools/configure_h3zero_modal.py `
+  --url https://<workspace>--minimax-h3-web.modal.run
+```
 
 ## Cost and licence gates
 
