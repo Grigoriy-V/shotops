@@ -120,6 +120,12 @@ probing without editing the scene; the moment a configuration is the right one,
 it goes in the file. This is the whole premise — a shot whose best version lives
 in a chat log is not source-controlled, whatever the repository says.
 
+**Do not rewrite a prompt that has been run and judged good.** `full_prompt`
+sends the scene's text byte for byte with nothing prepended, and that is the
+right field for a wording someone tested. Improving it into a near-miss trades a
+known result for an unknown one. `prompt` — the look half, with the contract
+generated — is for looks still being searched for.
+
 Craft findings — what a video model holds, where it drifts, what a blockout has
 to supply — are not rules and do not belong here. Survey material goes in
 [docs/research/craft.md](docs/research/craft.md); what a particular shot taught

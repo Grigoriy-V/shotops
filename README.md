@@ -522,6 +522,7 @@ without Blender installed.
 
   "generation": {
     "prompt": "A polished dark-granite monolith rotating in a brutalist hall...",
+    // ...or "full_prompt", sent byte for byte with no contract prepended
     "reference_mode": "video",  // video | frames | first
     "duration": 5,              // 4-30
     "resolution": "720p",       // 480p | 720p; 1080p on seedance-2 only
@@ -567,6 +568,17 @@ the sentence that decides the shot — *appearance is determined solely by the
 images* — and tells the model to take no framing from them. Repeated `--style`
 flags override the list for one run without editing the scene, and a
 `styleframe.png` sitting in the take is the last resort.
+
+**`full_prompt` opts out of all of that.** It is sent byte for byte, contract
+included, and it exists because an assembled prompt is worth less than a tested
+one. The NYC shot's prompt was written by hand, run, and judged good; rebuilding
+a near-miss of it every time would swap a tested string for an untested one. Use
+`prompt` while a look is still being found, and move to `full_prompt` once a
+particular wording is the reason a take works.
+
+`check` guards the one thing a verbatim prompt can get wrong on its own: naming
+`Image 3` when only two references will be attached. That fails before anything
+is uploaded.
 
 ### Why the provider is PiAPI
 

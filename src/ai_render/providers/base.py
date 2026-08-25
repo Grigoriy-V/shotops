@@ -7,7 +7,7 @@ here, not touching the scene layer.
 
 from __future__ import annotations
 
-import urllib.request
+import re
 from pathlib import Path
 
 
@@ -88,6 +88,38 @@ def build_reference_prompt(prompt, mode, count, styles=0):
             f"exactly unchanged. Do not copy their {DROP}."
         )
     return f"{preamble}\n\nRender it as: {prompt}"
+
+
+def resolve_prompt(generation, mode, count, styles=0):
+    """What actually gets sent, from the scene's own fields.
+
+    `full_prompt` wins and is sent byte for byte, contract and all. That field
+    exists because a prompt someone tested is worth more than a prompt this
+    module can assemble: the NYC shot's prompt was written by hand, run, and
+    judged good, and generating a near-miss of it would be substituting an
+    untested string for a tested one.
+
+    `prompt` is the other half of the deal -- the look only, with the contract
+    prepended here. It stays the default because most scenes have no tested
+    prompt to defend.
+
+    Lives in one place so the two providers cannot drift on which field wins.
+    """
+    verbatim = generation.get("full_prompt")
+    if verbatim:
+        return verbatim
+    return build_reference_prompt(generation["prompt"], mode, count, styles=styles)
+
+
+def unbound_image_tags(prompt, available):
+    """Image numbers the prompt names that no reference will be uploaded for.
+
+    A prompt saying "Image 1, Image 2, and Image 3" with two references
+    attached is a prompt talking about something that will not be there. Cheap
+    to catch, and the alternative is finding out from the result.
+    """
+    referenced = {int(n) for n in re.findall(r"@?[Ii]mage\s*(\d+)", prompt)}
+    return sorted(n for n in referenced if n > available)
 
 
 class VideoProvider:

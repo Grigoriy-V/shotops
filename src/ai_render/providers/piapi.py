@@ -24,7 +24,7 @@ import os
 import time
 from pathlib import Path
 
-from .base import VideoProvider, build_reference_prompt, download
+from .base import VideoProvider, download, resolve_prompt
 
 BASE_URL = os.environ.get("PIAPI_BASE_URL", "https://api.piapi.ai/api/v1")
 
@@ -118,9 +118,7 @@ class PiapiSeedance(VideoProvider):
                 "model": "seedance",
                 "task_type": self.task_type,
                 "input": {
-                    "prompt": build_reference_prompt(
-                        generation["prompt"], mode, 1, styles=len(image_urls)
-                    ),
+                    "prompt": resolve_prompt(generation, mode, 1, styles=len(image_urls)),
                     # The whole ballgame: without omni_reference the references
                     # are accepted and then ignored.
                     "mode": "omni_reference",
@@ -146,6 +144,8 @@ class PiapiSeedance(VideoProvider):
                 f"[generate] piapi/{self.task_type} -- {payload['input']['duration']}s "
                 f"@ {resolution} {aspect_ratio}, mode=omni_reference{style_note}"
             )
+            if generation.get("full_prompt"):
+                print("[generate] prompt sent verbatim from the scene's 'full_prompt'")
             response = session.post(f"{BASE_URL}/task", json=payload, timeout=180)
             if response.status_code >= 400:
                 raise RuntimeError(f"PiAPI {response.status_code}: {response.text[:800]}")

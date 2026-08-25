@@ -271,17 +271,18 @@ That is now closed. `street_a.json` carries the model, the comic-book prompt and
 the three references, and `build_reference_prompt` generates the ownership
 sentence whenever references are attached.
 
-Two deliberate differences from what the playground sent, both kept because they
-were validated earlier or are plainly safer:
+**The prompt goes out exactly as it was tested.** The first attempt at this
+regenerated the contract from the pipeline's own template — more specific about
+what `@video1` owns, plus a line telling the model to take no framing from the
+images — which is a better-sounding prompt and an untested one. 003's text is
+the text that produced the result being claimed, so `generation.full_prompt`
+holds it verbatim and nothing is prepended. `check` says so out loud, and the
+only thing it guards is the one error a verbatim prompt can make alone: naming
+`Image 3` when the scene attaches two references.
 
-- The contract still enumerates what `@video1` owns — camera motion, duration,
-  composition, shot scale, spatial relationships, object positions, model
-  structure, motion trajectory — where the hand-written version said "camera
-  movement, composition, and object positions". More specific, same intent.
-- It adds *take no camera, framing or object placement from the images*. 003 did
-  not say this and did not need to, but the references are frames with strong
-  compositions of their own, and this is the cheap guard against one of them
-  arriving as a layout.
+`prompt` still exists and still gets the generated contract. It is the right
+field while a look is being searched for; `full_prompt` is the right field once
+a wording is the reason a take works.
 
 The prompt keeps `20mm anamorphic`, which had been struck out of the earlier
 prompt as camera vocabulary in a shot where the camera is geometry. It came back
@@ -289,7 +290,7 @@ by hand in 002 and stayed for 003. It is at least no longer *wrong* — the scen
 renders on a 20 mm lens — and it is in the config that produced the good take,
 so it stays until something argues otherwise.
 
-Changing the prompt changes the scene id: `64dd03` → `f05888`, on a scene whose
+Changing the prompt changes the scene id: `64dd03` → `a341b4`, on a scene whose
 geometry did not move a millimetre. Everything already on disk still carries
 `64dd03` and still records what made it. Whether a blockout's id should depend
 on the prompt at all is an open question about `scene_id`, not about this shot.

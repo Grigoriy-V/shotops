@@ -30,7 +30,7 @@ import os
 import time
 from pathlib import Path
 
-from .base import VideoProvider, build_reference_prompt, download
+from .base import VideoProvider, download, resolve_prompt
 
 BASE_URL = os.environ.get("COMETAPI_BASE_URL", "https://api.cometapi.com/v1")
 DEFAULT_MODEL = os.environ.get("AI_RENDER_COMET_MODEL", "seedance-2-5")
@@ -124,7 +124,7 @@ class CometSeedance(VideoProvider):
         seconds = str(int(generation.get("duration", 5)))
 
         data = {
-            "prompt": build_reference_prompt(generation["prompt"], mode, len(refs)),
+            "prompt": resolve_prompt(generation, mode, len(refs)),
             "model": self.model,
             "seconds": seconds,
             "size": size,

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from . import audit, blender_runner, compare, env, project, runs, spec as spec_mod, styleframe
 from .providers import get_provider
+from .providers.base import unbound_image_tags
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTRACT_SCRIPT = ROOT / "blender" / "extract_frames.py"
@@ -49,9 +50,21 @@ def cmd_check(args):
     if missing:
         print(f"error: style reference not found: {', '.join(missing)}", file=sys.stderr)
         return 1
-    if generation.get("style_references"):
-        count = len(generation["style_references"])
+    references = generation.get("style_references") or []
+    if references:
+        count = len(references)
         print(f"ok -- {count} style reference{'s' if count != 1 else ''}, tagged @image1..{count}")
+    if generation.get("full_prompt"):
+        print("note: 'full_prompt' is sent verbatim -- the reference contract is not prepended")
+        unbound = unbound_image_tags(generation["full_prompt"], len(references))
+        if unbound:
+            named = ", ".join(f"Image {n}" for n in unbound)
+            print(
+                f"error: the prompt names {named}, but only {len(references)} "
+                "style reference(s) will be attached",
+                file=sys.stderr,
+            )
+            return 1
     return 0
 
 
@@ -253,6 +266,18 @@ def cmd_generate(args):
         print(f"error: {missing}", file=sys.stderr)
         return 2
 
+    # Checked again here, not only in `check`: --style can change the count out
+    # from under a verbatim prompt, and this is the last free moment.
+    unbound = unbound_image_tags(generation.get("full_prompt") or "", len(style_images))
+    if unbound:
+        named = ", ".join(f"Image {n}" for n in unbound)
+        print(
+            f"error: the prompt names {named}, but {len(style_images)} style "
+            "reference(s) are attached",
+            file=sys.stderr,
+        )
+        return 2
+
     provider = get_provider(args.provider, model=model)
     resolved_model = getattr(provider, "task_type", None) or getattr(provider, "model", "default")
     out_dir = runs.new_generation(take, resolved_model, generation.get("resolution", "720p"))
@@ -297,7 +322,13 @@ def cmd_styleframe(args):
 
     prompt = args.prompt or (generation.get("style_prompt") or generation.get("prompt"))
     if not prompt:
-        print("error: no prompt -- pass --prompt or give the scene a generation block", file=sys.stderr)
+        # `full_prompt` is deliberately not a fallback: it carries the video
+        # reference contract, which means nothing to an image model.
+        print(
+            "error: no look prompt -- pass --prompt, or give the scene a "
+            "'style_prompt' or 'prompt' in its generation block",
+            file=sys.stderr,
+        )
         return 2
     out_path = take / "styleframe.png"
 

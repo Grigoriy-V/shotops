@@ -431,6 +431,25 @@ expect_error("frames mode without stills", lambda s: (s["generation"].update(ref
 expect_error("style_references not a list", lambda s: s["generation"].update(style_references="a.png"))
 expect_error("empty style_references", lambda s: s["generation"].update(style_references=[]))
 expect_error("blank style reference", lambda s: s["generation"].update(style_references=["a.png", "  "]))
+expect_error("blank full_prompt", lambda s: s["generation"].update(full_prompt="   "))
+expect_error("no prompt of either kind", lambda s: s["generation"].pop("prompt"))
+
+
+def expect_ok(label, mutate):
+    scene = json.loads(json.dumps(demo))
+    mutate(scene)
+    try:
+        spec_mod.validate(scene)
+        print(f"  ok   {label}")
+    except spec_mod.SpecError as exc:
+        failures.append(f"{label}: unexpected SpecError {exc}")
+        print(f"  FAIL {label}: {exc}")
+
+
+expect_ok(
+    "full_prompt alone is enough",
+    lambda s: (s["generation"].pop("prompt"), s["generation"].update(full_prompt="send this")),
+)
 
 print("style references -- where they come from, and in what order")
 from ai_render.cli import _style_references  # noqa: E402
@@ -522,6 +541,33 @@ check(
 check("no style references, no split", "@image1" not in video_desc, True)
 one = build_reference_prompt("a granite monolith", "video", 1, styles=1)
 check("one reference reads as singular", "use it as the reference" in one, True)
+
+print("providers -- a tested prompt is sent as tested")
+from ai_render.providers.base import resolve_prompt, unbound_image_tags  # noqa: E402
+
+# The whole point of full_prompt: a prompt someone ran and judged good must
+# arrive byte for byte, contract and all. Anything assembled around it would be
+# substituting an untested string for a tested one.
+verbatim = "Maintain the camera movement from Video 1.\n\nUse Image 1 and Image 2."
+check(
+    "full_prompt goes out untouched",
+    resolve_prompt({"full_prompt": verbatim, "prompt": "ignored"}, "video", 1, styles=2),
+    verbatim,
+)
+check(
+    "without it the contract is built",
+    resolve_prompt({"prompt": "a granite monolith"}, "video", 1, styles=0),
+    build_reference_prompt("a granite monolith", "video", 1),
+)
+check("blank full_prompt falls through", resolve_prompt({"full_prompt": "", "prompt": "x"}, "video", 1)[-1], "x")
+
+# A verbatim prompt can name more images than the scene will attach, and the
+# result is a shot describing something that was never uploaded.
+check("names an image nobody uploaded", unbound_image_tags(verbatim, 1), [2])
+check("all bound is quiet", unbound_image_tags(verbatim, 2), [])
+check("fewer named than attached is fine", unbound_image_tags(verbatim, 5), [])
+check("@image form counts too", unbound_image_tags("use @image3 heavily", 2), [3])
+check("no image talk at all", unbound_image_tags("a granite monolith", 0), [])
 
 print("cometapi -- response url extraction")
 for label, body in [

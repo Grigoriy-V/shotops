@@ -137,8 +137,18 @@ def validate(spec):
     if generation is not None:
         if not isinstance(generation, dict):
             _fail("generation", "must be an object")
-        if not generation.get("prompt"):
-            _fail("generation.prompt", "required to run the video generation step")
+        # Either half of the deal, but one of them. `prompt` is the look only and
+        # gets the reference contract prepended; `full_prompt` is sent byte for
+        # byte and takes precedence, which is how a prompt that was tested by
+        # hand stays exactly the prompt that was tested.
+        if not generation.get("prompt") and not generation.get("full_prompt"):
+            _fail(
+                "generation.prompt",
+                "required to run the video generation step -- or 'full_prompt' "
+                "to send a complete prompt of your own, contract included",
+            )
+        if "full_prompt" in generation and not str(generation["full_prompt"]).strip():
+            _fail("generation.full_prompt", "must be a non-empty string when present")
         mode = generation.get("reference_mode", "video")
         if mode not in KNOWN_REFERENCE_MODES:
             _fail(
