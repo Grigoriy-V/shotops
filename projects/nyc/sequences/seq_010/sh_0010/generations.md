@@ -644,3 +644,168 @@ about 66 seconds after model initialization. At the deployment-time RTX PRO
 6000 list rate, GPU compute is estimated below roughly $0.15 for this cold run;
 CPU gateway/build work and persistent storage are separate. This is an
 estimate, not a billed figure.
+
+---
+
+## 008 — H3Zero / Ref2VA on its own distillation
+
+The first run after the checkpoint and the accelerator LoRA became request
+parameters. Same shot, same references, same prompt and same four-step profile
+as 007; the two things that changed are that reference conditioning ran on
+**Ref2VA** instead of FL2VA, and that the step distillation loaded was
+`ref2v_turbo_4` — the one distilled from those weights rather than from the
+frame model.
+
+| | |
+| --- | --- |
+| Task | `d95dbe05193f423ca990f17694473c92` |
+| Model | `h3zero/ref2va/turbo_4`, 480p 16:9 (864x480), 10 s |
+| Accelerator | `ref2v_turbo_4` (v0.1) |
+| VRAM | peak 64.89 / 94.97 GiB — **the first measured figure** |
+| Result | `render/..._e64594_render_v006.mp4`, 3.2 MB |
+| Compared | `artifacts/..._e64594_sheet_v012_vs_render_v006.jpg` |
+
+### What it settles
+
+The plumbing: the checkpoint and the LoRA are selectable per request, the
+executed graph reports back which ones actually ran, and the result is no longer
+deleted from Modal. The VRAM sampler produced a real number, which corrected a
+written assumption — the staged model sizes sum to 62.4 GiB and had been called
+an upper bound on the working set, and the measured peak is higher than that,
+not lower. Staged weights are a floor, not a ceiling.
+
+### What it does not settle
+
+**Not much, visually.** Read at first against 007 as an improvement in how the
+climb was timed; the user's read on the finished clip was that it is
+substantially the same result, and that is the one this entry records. The
+mechanism supports it: both checkpoints go through the same conditioning node,
+and that node appends reference latents as context beside the timeline rather
+than binding reference frame `t` to output frame `t`. Changing which weights
+read that context cannot fix a structural mechanism that is not there.
+
+The water tank is still not the water tank: it comes back as towers on distant
+roof edges rather than as the cylinder filling the right third of frame.
+
+## 009 — the first H3 run that holds the blockout
+
+Three things changed at once against 008, deliberately, because the question
+was "can H3 do this at all" rather than "which knob matters":
+
+1. **`base`, 30 steps, no accelerator LoRA at all** — instead of four distilled
+   steps. In this graph there is no CFG (`BasicGuider`), so step count is the
+   only lever on how hard conditioning is enforced.
+2. **768p (1344x768)** — instead of 480p. MiniMax documents the short side as
+   768 by default and does not mention 480p anywhere; every earlier H3 run in
+   this log was below the resolution the weights were trained at. The
+   `fl2v_turbo_4` LoRA is even labelled `768p` in its own filename.
+3. **The prompt rewritten into MiniMax's six-section reference format**, with
+   timecoded beats taken straight off the camera track in `street_a.json`.
+
+| | |
+| --- | --- |
+| Task | `664a395b01b44d6da0cb6c95931073c5` |
+| Model | `h3zero/ref2va/base`, 768p 16:9 (1344x768), 10 s |
+| Accelerator | none — samples the checkpoint directly |
+| VRAM | peak 69.3 / 94.97 GiB (73%) |
+| Time | 21 m 03 s end to end |
+| Result | `render/..._e64594_render_v007.mp4`, 4.1 MB |
+| Compared | `artifacts/..._e64594_sheet_v013_vs_render_v007.jpg` |
+
+### What held
+
+**The structure, for all ten seconds.** This is the first time an H3 result does
+that.
+
+The decisive column is **t = 43%**, which is exactly where 007 and 008 broke: the
+blockout has a facade filling the frame and the camera still climbing it, and
+both earlier runs had already opened into an aerial. Here the result is a brick
+facade filling the frame, window rows where the ledges are. The climb happens
+when the blockout climbs.
+
+At 29% the near car is a yellow taxi, corner-on, right of centre, where the
+blockout puts a red box. At 57% the parapet crests with sky above it. And at
+71% **the cylinder comes back as a rooftop water tank on a steel frame, at its
+position and its scale** — the failure 006 named and 008 did not fix. The
+difference is that this prompt names it, at its timecode.
+
+### What did not hold
+
+**The look.** The references are dense Spider-Verse illustration, hot pink and
+orange, visible brush. The result is closer to muted photoreal cinema. The
+references clearly supplied *content* — the water towers, the bay, the bridge,
+the skyline all resemble theirs — but not the manner.
+
+The likely cause is the prompt itself: `detailed_description` came out long and
+written in physical terms, which pulls toward realism, and the one comic-book
+line ended up buried in `retention_analysis`. `base` without a distillation may
+pull the same way. Untested either way.
+
+### What it does not answer
+
+Three variables moved together, so this says H3 *can* hold a blockout and says
+nothing about which change bought it. Separating them is the next cheap thing to
+do, and 480p/`base` is the single most informative split, because it costs a
+fifth of this run.
+
+### What the research behind it found
+
+Two findings outlast this shot and are written up in
+[h3zero-modal.md](../../../../docs/h3zero-modal.md):
+
+**H3-Context-IR is not in the open-weight release.** MiniMax's pipeline is
+Context-IR, a hosted multi-stage preprocessor, feeding H3-Base. Only H3-Base is
+released. Every earlier run in this log fed a free-form prompt straight to
+H3-Base — that is, the input meant for the *previous* stage. The six-section
+format is the shape of Context-IR's output, and writing it by hand is the
+substitute MiniMax themselves point developers at. 009 is the first run that
+gave H3-Base an input of the kind it expects.
+
+**The reference video is context, not control.** The conditioning node encodes
+it into a `minimax_refs` block re-injected every step and never denoised, while
+the output latent starts empty; the text encoder sees the video at 2 fps. There
+is no per-frame binding anywhere, and no depth, pose or ControlNet path exists
+for H3. Reference video is guidance by construction, which is what the vendor
+says as well.
+
+### Recording, from here on
+
+Copying the result out of `out/` into `render/` under its conventional name used
+to be manual, and 008 and 009 both sat in `render/` under raw task ids until
+they were renamed by hand. `generate` now does it, along with the comparison
+sheet, which can only be named once the render has a number. `--no-publish`
+opts out.
+
+---
+
+## Reading the point figures
+
+Every Seedance entry above records cost in PiAPI points, because that is what the
+task response returns. **Points are tied to cents: 100,000 points to the cent,
+10,000,000 to the dollar.** Divide a point figure by ten million to read it in
+dollars.
+
+| Run | Tier | Billed | Charged | Effective | Site list price |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 001 | `mini-less-restriction` | 20 s | $0.69 | $0.0345/s | $0.046/s |
+| 002 | `fast` | 8 s | $0.384 | $0.048/s | $0.064/s |
+| 003 | `fast` | 20 s | $0.96 | $0.048/s | $0.064/s |
+| 006 | `fast-less-restriction` | 20 s | $1.05 | $0.0525/s | $0.070/s |
+
+Two things fall out of it.
+
+**Every run is charged at exactly 0.75 of the published 480p price** — the same
+multiplier on all four tiers, so it is an account-level rate rather than a
+per-model promotion. Which means the site's price list predicts the *ratios*
+between tiers perfectly and the absolute figure not at all.
+
+**The reference video is billed as well as the output.** No row reconciles
+without twice the output duration: 10 s in plus 10 s out is 20 billed seconds,
+and 002's four-second take is 8. 001 recorded this from a line in the provider
+log; the arithmetic now confirms it independently. A blockout is not free to hand
+over, which makes reference duration a cost lever and not only a quality one.
+
+*This table was first written with the rate derived from the published prices,
+which produced 7,500,000 points to the dollar and a $1.40 figure for 006. The
+account says $1.05. The four runs really were mutually consistent — but internal
+consistency fixes only the ratios, and the scale has to come from a bill.*
