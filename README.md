@@ -86,31 +86,34 @@ from the marker kept the red and washed the entire frame in it.
 
 ### The same shot on a self-hosted model
 
-| 30 steps, no distillation | 8 steps, distilled LoRA |
+| the blockout, `e64594` | `base` · 30 steps · 21 m 03 s |
 | --- | --- |
-| ![h3 base](docs/nyc-h3-result.gif) | ![h3 lora](docs/nyc-h3-lora.gif) |
+| ![blockout](docs/nyc-h3-blockout.gif) | ![h3 base](docs/nyc-h3-result.gif) |
+| **`spectrum` · 30 scheduled · 13 m 57 s** | **`fl2v_turbo_8` · 8 steps · 6 m 51 s** |
+| ![h3 spectrum](docs/nyc-h3-spectrum.gif) | ![h3 lora](docs/nyc-h3-lora.gif) |
 
-Both are **MiniMax H3** — open weights, running on our own Modal deployment on
-an RTX PRO 6000 Blackwell. They share their spec, their blockout render and
-their three look references with the Seedance run that settled the cars above:
-scene id `e64594`, one take, two providers. Nothing about the shot changed. Only
-the thing at the far end of the pipe did.
+Three runs of **MiniMax H3** — open weights, on our own Modal deployment on an
+RTX PRO 6000 Blackwell — against the grey blockout they were all given. They
+share their spec, that blockout render and their three look references with the
+Seedance run that settled the cars above: scene id `e64594`, one take, two
+providers. Nothing about the shot changed. Only the thing at the far end of the
+pipe did.
 
-| | Seedance 2 via PiAPI | H3 · 30 steps | H3 · 8 steps |
-| --- | --- | --- | --- |
-| Output | 480p, 10 s | **768p** (1344×768), 10 s | **768p**, 10 s |
-| Wall clock | 2 m 34 s | 21 m 03 s | **6 m 51 s** |
-| Sampling | provider's business | 30 steps, no LoRA | 8 steps, crossed LoRA |
-| Peak VRAM | — | 69.3 / 94.97 GiB (73%) | 69.35 / 94.97 GiB (73%) |
-| Cost | **$1.05** — 10,500,000 points billed | **≈$1.06** — 21 GPU-minutes | **≈$0.35** — 7 GPU-minutes |
-| Structure | held for all ten seconds | held for all ten seconds | held for all ten seconds |
+| | Seedance 2 via PiAPI | H3 · `base` | H3 · `spectrum` | H3 · 8 steps |
+| --- | --- | --- | --- | --- |
+| Output | 480p, 10 s | **768p** (1344×768), 10 s | **768p**, 10 s | **768p**, 10 s |
+| Wall clock | 2 m 34 s | 21 m 03 s | 13 m 57 s | **6 m 51 s** |
+| Sampling | provider's business | 30 steps, no LoRA | 30 scheduled, forecast | 8 steps, crossed LoRA |
+| Peak VRAM | — | 69.3 / 94.97 GiB (73%) | 69.3 / 94.97 GiB (73%) | 69.35 / 94.97 GiB (73%) |
+| Cost | **$1.05** — 10,500,000 points billed | **≈$1.06** — 21 GPU-min | **≈$0.70** — 14 GPU-min | **≈$0.35** — 7 GPU-min |
+| Structure | held for all ten seconds | held for all ten seconds | held for all ten seconds | held for all ten seconds |
 
 *PiAPI points are tied to cents — 10,000,000 points to the dollar — and that run
 was charged for the reference video as well as the output: 10 s in plus 10 s out,
 20 billed seconds at an effective $0.0525/s. The Seedance figure is an account
-balance, not an estimate. Modal charges $0.000842/s for this card; those two
-assume the GPU was up for the whole run, and CPU, RAM and stored weights are
-extra on top.*
+balance, not an estimate. Modal charges $0.000842/s for this card; the three H3
+figures assume the GPU was up for the whole run, and CPU, RAM and stored weights
+are extra on top.*
 
 **In the distilled range, steps are cheap.** Doubling from four to eight cost
 about one extra minute of wall clock, because starting a container and loading
@@ -119,14 +122,24 @@ The jump to thirty is a different story — three times the wall clock — and t
 run log does not break that down far enough to say how much of it is the extra
 steps and how much is `base` running a different path with no LoRA on it.
 
-What the runs do settle is the ordering. Step count outranked every other
-variable across four LoRA and no-LoRA runs, and the step-distillation MiniMax
-pairs with its own reference checkpoint came *last* — beaten at equal steps by
-one distilled from the other checkpoint entirely. The right-hand column is the
-practical default and the left one is the ceiling: same structure held, a third
-of the cost, and a look that is noticeably more stylised at eight steps than at
-thirty, because more sampling buys structural fidelity and spends the
-stylisation.
+**What the runs settle is an ordering, and it is by step count.** Five H3 runs,
+ranked by eye: `base` first, `spectrum` second, then eight distilled steps, then
+four. Nothing else moved the result as reliably — which is what a graph with no
+CFG predicts, since step count is the only lever on how hard conditioning is
+enforced. The step-distillation MiniMax pairs with its own reference checkpoint
+came *last*, beaten at equal steps by one distilled from the other checkpoint
+entirely.
+
+`spectrum` is the interesting middle: not a distillation but a feature
+forecaster, running some steps for real and predicting the rest, which buys a
+third off `base` for second place overall. Eight distilled steps is the
+practical default at a third of `base`'s cost, and its look is noticeably more
+stylised — more sampling buys structural fidelity and spends the stylisation.
+
+Ranking inside that top group is provisional, and the reason is worth stating:
+by the time three runs all hold the blockout, telling them apart needs them
+side by side and moving. A contact sheet cannot do it and neither can watching
+them in turn.
 
 Against Seedance, what differs is not the price but what it buys: full control
 of the sampler, weights that cannot be deprecated out from under a shot, and no
