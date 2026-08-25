@@ -376,6 +376,39 @@ throwaway probe.
 Run `check` before `render` and `render` before `generate` — each stage is free
 until the last one, so failures should surface as early as possible.
 
+### Watching several takes together
+
+The contact sheet answers *is the camera where the blockout puts it at 43%* and
+answers it well. It cannot answer *which of these is cleaner*: texture,
+stylisation and temporal noise do not survive being sampled eight times, and
+once several runs all hold the blockout those are the only things left to judge.
+Playing them one after another does not work either — the gap between two
+playbacks is long enough to forget the first.
+
+```bash
+python -m ai_render mosaic out/fourup.mp4 \
+  "out/.../preview.mp4=blockout" \
+  "projects/.../render/..._render_v007.mp4=base · 30 steps" \
+  "projects/.../render/..._render_v011.mp4=spectrum"
+```
+
+Clips tile in reading order, two per row by default (`--columns`, `--width`).
+`=LABEL` captions a cell; without one the filename stem is used.
+
+Two things are normalised, for the same reason the sheet samples by position
+rather than frame number. **Time** is scaled so t = 50% is the same instant in
+every cell — a blockout and a generation need not agree on length, and H3
+aligns output to its own frame grid, coming back 3 frames longer than the
+10-second blockout it was given. **Aspect** is preserved and padded rather than
+stretched, because Blender's 16:9 and H3's 7:4 canvas genuinely differ.
+
+Audio is dropped: three generations playing their invented city ambience at once
+is noise, not evidence.
+
+This needs **ffmpeg**, which the rest of the pipeline does without — stills come
+out of Blender precisely so there is no such dependency. If it is not on PATH,
+point `AI_RENDER_FFMPEG` at its directory or at the binary.
+
 ### Measuring a move before rendering it
 
 ```bash

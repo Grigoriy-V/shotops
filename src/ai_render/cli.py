@@ -524,6 +524,30 @@ def cmd_compare(args):
     return 0
 
 
+def cmd_mosaic(args):
+    """Tile clips into one video, so several takes can be watched together.
+
+    Takes paths rather than a scene: the comparisons worth making cut across
+    takes and shots, and one of the cells is usually the blockout, which does
+    not live where the generations do.
+    """
+    from . import mosaic
+
+    clips = []
+    for entry in args.clips:
+        path, _, label = entry.partition("=")
+        clips.append((Path(path), label or Path(path).stem))
+    try:
+        out = mosaic.build(
+            clips, Path(args.out), columns=args.columns, cell_width=args.width
+        )
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(f"[mosaic] {_rel(out)} ({out.stat().st_size / 1e6:.1f} MB)")
+    return 0
+
+
 def cmd_all(args):
     rc = cmd_render(args)
     return rc or cmd_generate(args)
@@ -711,6 +735,18 @@ def main(argv=None):
     p.add_argument("video", help="path to an .mp4")
     p.add_argument("--count", type=int, default=8, help="number of stills (default: 8)")
     p.set_defaults(func=cmd_extract)
+
+    p = sub.add_parser("mosaic", help="tile several clips into one video for comparison")
+    p.add_argument("out", help="destination .mp4")
+    p.add_argument(
+        "clips",
+        nargs="+",
+        help="clips to tile, in reading order. Append =LABEL to caption one, "
+        "e.g. render_v011.mp4=spectrum; the filename stem is used otherwise.",
+    )
+    p.add_argument("--columns", type=int, default=2, help="cells per row (default: 2)")
+    p.add_argument("--width", type=int, default=672, help="cell width in px (default: 672)")
+    p.set_defaults(func=cmd_mosaic)
 
     args = parser.parse_args(argv)
     env.load()
