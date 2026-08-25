@@ -211,8 +211,18 @@ proportions from one rule.
   eight, and the rake is derived from the footprint — 34.8° on the saloon,
   34.4° on the estate, 46.9° on a 3.8 × 1.9 m stub. Compared side by side in
   [`assets/artifacts/assets_car_compare_0190ac_sheet_v001.jpg`](../../../assets/artifacts/assets_car_compare_0190ac_sheet_v001.jpg).
-  **The shot still uses the boxed asset.** Switching it changes the geometry the
-  camera passes at 0.95 m, so it wants its own `audit` and its own decision.
+  **The shot is on `sedan_solid` as of blockout v004.** 88 objects instead of
+  104, and `audit` is unchanged where it matters: 0.95 m to `car_03_body` at
+  t = 1.62 and to `car_06_body` at t = 2.88, the same two objects at the same
+  two moments. The greenhouse comes 4 cm closer than the old roof box did —
+  1.19 m against 1.23 — because its belt line is 0.80 of the body width rather
+  than 0.76. Still well behind the body, which is what the camera actually
+  nearly hits.
+- **The result on disk was made from the boxed cars.** `render_v003.mp4` and the
+  two gifs in the README are one matched pair, blockout and result from the same
+  run, and the blockout in that pair is `64dd03`. Do not refresh the blockout
+  gif on its own — a mismatched pair is worse than an old one. The next
+  generation replaces both.
 - ~~The two mid-road cars are still unproven~~ — **proven.** Generations 002 and
   003 both bring them back as cars at the 0.95 m pass, with wheels, glass, tail
   lights and plates. The 001 failure does not recur.

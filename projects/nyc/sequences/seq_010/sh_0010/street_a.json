@@ -1,13 +1,13 @@
 {
   "instances": [
-    { "asset": "sedan", "name": "car_01", "location": [5.9, -104, 0], "size": [1.9, 4.6, 1.5] },
-    { "asset": "sedan", "name": "car_02", "location": [5.9, -87, 0], "size": [1.9, 4.6, 1.4] },
-    { "asset": "sedan", "name": "car_03", "location": [1.76, -87, 0], "size": [2.0, 5.2, 1.6] },
-    { "asset": "sedan", "name": "car_04", "location": [-5.9, -68, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] },
-    { "asset": "sedan", "name": "car_05", "location": [-5.9, -52, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] },
-    { "asset": "sedan", "name": "car_06", "location": [-1.7, -52, 0], "size": [2.1, 5.6, 1.8], "rotation": [0, 0, 180] },
-    { "asset": "sedan", "name": "car_07", "location": [-5.9, -36, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] },
-    { "asset": "sedan", "name": "car_08", "location": [-5.9, -26, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] }
+    { "asset": "sedan_solid", "name": "car_01", "location": [5.9, -104, 0], "size": [1.9, 4.6, 1.5] },
+    { "asset": "sedan_solid", "name": "car_02", "location": [5.9, -87, 0], "size": [1.9, 4.6, 1.4] },
+    { "asset": "sedan_solid", "name": "car_03", "location": [1.76, -87, 0], "size": [2.0, 5.2, 1.6] },
+    { "asset": "sedan_solid", "name": "car_04", "location": [-5.9, -68, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] },
+    { "asset": "sedan_solid", "name": "car_05", "location": [-5.9, -52, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] },
+    { "asset": "sedan_solid", "name": "car_06", "location": [-1.7, -52, 0], "size": [2.1, 5.6, 1.8], "rotation": [0, 0, 180] },
+    { "asset": "sedan_solid", "name": "car_07", "location": [-5.9, -36, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] },
+    { "asset": "sedan_solid", "name": "car_08", "location": [-5.9, -26, 0], "size": [1.9, 4.6, 1.5], "rotation": [0, 0, 180] }
   ],
   "camera": {
     "lens": 20.0,

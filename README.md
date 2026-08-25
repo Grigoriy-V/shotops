@@ -186,6 +186,9 @@ and why agentic Blender work splits into MCP for the viewport and specs for the
 pipeline. [`docs/design/`](docs/design/) records decisions that came out of it —
 starting with [how the agent checks its own
 scene](docs/design/feedback-loop.md).
+[`docs/craft/modelling.md`](docs/craft/modelling.md) is the working set of rules
+for building geometry a video model can read, each one linked to the experiment
+that produced it.
 
 ## How it fits together
 

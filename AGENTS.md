@@ -139,10 +139,16 @@ right field for a wording someone tested. Improving it into a near-miss trades a
 known result for an unknown one. `prompt` — the look half, with the contract
 generated — is for looks still being searched for.
 
-Craft findings — what a video model holds, where it drifts, what a blockout has
-to supply — are not rules and do not belong here. Survey material goes in
-[docs/research/craft.md](docs/research/craft.md); what a particular shot taught
-goes in that shot's `notes.md`, next to the spec that proved it.
+The rules above are the short list — the ones that change what you are allowed
+to do. **The long list is [docs/craft/modelling.md](docs/craft/modelling.md):**
+how to build geometry for a blockout, with the experiment behind each rule.
+Read it before authoring a scene, and add to it when something costs you a
+lesson. A rule earns its place there by linking to the evidence.
+
+Findings about the *video model* — what it holds, where it drifts, what a
+blockout has to supply — go in [docs/research/craft.md](docs/research/craft.md);
+what a particular shot taught goes in that shot's `notes.md`, next to the spec
+that proved it.
 
 ## Keep the working record in the shot
 
