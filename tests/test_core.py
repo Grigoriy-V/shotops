@@ -846,9 +846,11 @@ class _Created:
 
 class _PostSession:
     def post(self, url, json=None, timeout=None):
+        created.update(json or {})
         return _Created()
 
 
+created = {}
 order = []
 saved_session = piapi_mod.PiapiSeedance.__dict__["_session"]
 saved_poll = piapi_mod.PiapiSeedance.__dict__["_poll"]
@@ -875,6 +877,12 @@ finally:
     upload_mod.get_uploader = saved_uploader
 
 check("on_task fires, and before the poll", order, ["id:task-42", "poll:task-42"])
+
+# Audio follows the API's own default rather than ours. Sending false by default
+# made every run a different job from generation 003, whose log reads
+# `audio: enabled=true` -- and 003 is the take the shot's config reproduces.
+check("audio defaults to on", created["input"]["audio"], True)
+check("omni_reference is not optional", created["input"]["mode"], "omni_reference")
 
 print("upload -- content type follows the file, not the assumption")
 from ai_render.upload import content_type_for  # noqa: E402

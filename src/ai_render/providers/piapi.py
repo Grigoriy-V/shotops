@@ -143,7 +143,12 @@ class PiapiSeedance(VideoProvider):
                     "resolution": resolution,
                     "aspect_ratio": aspect_ratio,
                     "video_urls": [url],
-                    "audio": bool(generation.get("generate_audio", False)),
+                    # Default true, matching the API's own default and the take
+                    # that works. 003 ran with audio on -- the log says
+                    # `enabled=true` -- so sending false was quietly generating
+                    # a different job from the one being reproduced. Set
+                    # "generate_audio": false in the spec for a silent clip.
+                    "audio": bool(generation.get("generate_audio", True)),
                 },
                 "config": {"service_mode": "public"},
             }

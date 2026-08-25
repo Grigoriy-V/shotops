@@ -45,6 +45,7 @@ this is [usage.md](usage.md).*
     "resolution": "720p",       // 480p | 720p; 1080p on seedance-2 only
     "aspect_ratio": "16:9",
     "model": "seedance-2-fast",
+    "generate_audio": true,     // default; false for a silent clip
     "style_references": [       // look references, in tag order: @image1, @image2 ...
       "styleframes/lookref_a.png",
       "styleframes/lookref_b.png"
