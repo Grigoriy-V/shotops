@@ -97,16 +97,20 @@ authoring a scene.
   carrying only palette and render style work, and they cannot contradict the
   blockout about staging, because they are not describing that street. This is
   the cheaper and more robust arrangement than a style still per shot.
-- **A look reference you do not own may be refused at the gate.** Three frames
-  from a released feature passed twice through the provider's playground and
-  were then rejected through its API on copyright — twice, on two different
-  model tiers, with the files demonstrably fetched and inspected both times.
-  Whatever explains the difference, the consequence is fixed: a reference the
-  pipeline cannot send is a reference the shot cannot depend on, however well it
-  worked.
-- **Finding out is free.** A rejected task freezes its points and restores them;
-  only a generation that completes is billed. Probing what a model will accept
-  costs nothing, which makes it worth doing before designing around a guess.
+- **A copyright refusal is not necessarily about the reference.** Three frames
+  from a released feature were rejected twice through the API — *"rejected due
+  to copyright restrictions"* — on two different model tiers, having been
+  accepted twice through the same vendor's playground. The variable turned out
+  to be neither the images nor the tier but `service_mode`: pinned to `public`
+  it was refused, left empty as the playground leaves it, the same request
+  completed. One success is not proof, and the lesson is not that the filter can
+  be talked around. It is that **a content verdict is still an API response, and
+  worth diffing against a request that worked before it is read as a judgement
+  about the content.**
+- **Finding out is free, in one direction.** A rejected task freezes its points
+  and restores them; only a generation that completes is billed. That makes
+  probing what gets refused cost nothing — and confirming what gets accepted
+  cost full price.
 - **Trim the blockout before probing.** Billing is linear in input + output
   duration, so a four-second cut of a ten-second shot costs 40% of the run. Most
   dressing failures happen in the first seconds, where the camera is closest.

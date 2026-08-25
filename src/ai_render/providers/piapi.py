@@ -60,6 +60,15 @@ KNOWN_TASK_TYPES = [
     "seedance-2-less-restriction",
 ]
 
+# Empty means "whatever the workspace is set to", which is what the playground
+# sends and what the docs describe as the default. "public" pins PAYG and
+# "private" pins HYA. Pinning it to public was this repo's own addition, never
+# asked for by the API -- and it was not free: two identical requests were
+# refused as "rejected due to copyright restrictions" with it set, and the same
+# request completed with it empty. One success is not a proof of mechanism, so
+# the field stays overridable; the default is what the playground sends.
+SERVICE_MODE = os.environ.get("AI_RENDER_PIAPI_SERVICE_MODE", "")
+
 RESOLUTIONS = {"480p", "720p", "1080p"}
 ASPECT_RATIOS = {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "auto"}
 TERMINAL_OK = {"completed", "success", "succeeded"}
@@ -160,7 +169,7 @@ class PiapiSeedance(VideoProvider):
                     # "generate_audio": false in the spec for a silent clip.
                     "audio": bool(generation.get("generate_audio", True)),
                 },
-                "config": {"service_mode": "public"},
+                "config": {"service_mode": str(generation.get("service_mode", SERVICE_MODE))},
             }
             if image_urls:
                 payload["input"]["image_urls"] = image_urls

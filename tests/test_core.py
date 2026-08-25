@@ -883,6 +883,9 @@ check("on_task fires, and before the poll", order, ["id:task-42", "poll:task-42"
 # `audio: enabled=true` -- and 003 is the take the shot's config reproduces.
 check("audio defaults to on", created["input"]["audio"], True)
 check("omni_reference is not optional", created["input"]["mode"], "omni_reference")
+# Empty is the workspace default and what the playground sends. Pinning it to
+# "public" was ours, not the API's.
+check("service_mode is left to the workspace", created["config"]["service_mode"], "")
 
 print("upload -- content type follows the file, not the assumption")
 from ai_render.upload import content_type_for  # noqa: E402

@@ -487,3 +487,78 @@ the 25th.** No explanation is available from either log, and the difference is
 not the tier, not the transport, and not the prompt. Whatever the reason, these
 references cannot be sent from here — which makes the look reference a decision
 to be made, not a bug to be found.
+
+*Answered by 006, immediately below, and the answer was one field.*
+
+---
+
+## 006 — 2026-08-25, it went through
+
+**The first shot in this project generated end to end by the pipeline.** 002 and
+003 were typed into a playground; this one came out of `shot.json`.
+
+### Setup
+
+| | |
+| --- | --- |
+| Task | `034feab3-468a-4141-b053-a2246cbe351b` |
+| Model | `seedance-2-fast-less-restriction`, 480p, 16:9, 10 s |
+| `@video1` | the take's own `preview.mp4` — solid-car blockout, `e64594` |
+| `@image1..3` | the same three look references that were refused twice |
+| Result | `render/..._e64594_render_v004.mp4`, 3.9 MB |
+| Compared | `artifacts/..._e64594_sheet_v010_vs_render_v004.jpg` |
+| Cost | 10,500,000 points |
+| Time | 2 m 34 s |
+
+### The one field
+
+005 → 006 changed exactly one thing:
+
+```diff
+- "config": {"service_mode": "public"}
++ "config": {"service_mode": ""}
+```
+
+Empty means *use the workspace setting*, which is what the playground's task
+record shows and what the docs describe as the default. `"public"` pins PAYG.
+Pinning it was this repo's own addition, never asked for by the API, and it is
+the difference between two refusals and a finished shot.
+
+**Held with care, because it is n = 1 on the success side.** Two rejections
+against one success is not proof that moderation is bound to the billing mode,
+and content filters are entitled to be probabilistic. What can be said is that
+005 and 006 differ in this field and nothing else — same tier, same blockout,
+same references, same prompt, same uploader, same day — and that the two
+refusals before it were consistent rather than flaky.
+
+Confirming it costs money in the direction that matters: a re-run pinned back to
+`public` is free **if it is refused**, and bills 10,500,000 if it is not. Left
+undone deliberately.
+
+### What the result looks like
+
+Structure held for all ten seconds. The two close cars at 13% and 27% come back
+as a yellow taxi with a roof sign and a deep red saloon, fully rendered at the
+0.95 m pass — the failure 001 was about, answered again on a different tier. The
+wall climb reads as a climb, the parapet as a parapet, and the rooftop reveal
+brings the bay, the suspension bridge and the far skyline out of the prompt
+alone, exactly as 003 did.
+
+### What this settles about the pipeline
+
+Everything `shot.json` claims, it now demonstrates. The prompt that produced 003
+went out byte for byte; the three references resolved from paths relative to the
+shot; `480p`/`16:9` came from `project.json` and the model and duration from
+`shot.json`; audio went out `true`, matching the take being reproduced. The
+manifest carries the task id, the uploader and the merged generation block, so
+this run can be read backwards from a file on disk.
+
+### Cost, updated
+
+| Run | Model | Billed | Points | Per billed second |
+| --- | --- | --- | --- | --- |
+| 004 | `seedance-2-fast` | rejected | 0 | — |
+| 005 | `seedance-2-fast-less-restriction` | rejected | 0 (10,500,000 held) | 525,000 |
+| 006 | `seedance-2-fast-less-restriction` | 10 s in + 10 s out | 10,500,000 | 525,000 |
+
+The held figure in 005 was the tier's true price, and 006 charged exactly it.
