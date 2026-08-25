@@ -778,6 +778,284 @@ opts out.
 
 ---
 
+## 010 — Ref2VA `turbo_4` at 768p, one variable against 008
+
+008 and 009 each moved several things at once. This run was *intended* as the
+resolution-only split against 008 — 480p to 768p, with checkpoint (`ref2va`),
+accelerator (`ref2v_turbo_4`), profile (`turbo_4`, 4 steps), prompt and
+references all unchanged.
+
+**It is not that split, because the seed moved too.** See "The seed was never
+pinned", below. Everything in this entry has to be read with that in mind.
+
+| | |
+| --- | --- |
+| Task | `cb74ea98b40c47638971d54c2687f35f` |
+| Model | `h3zero/ref2va/turbo_4`, 768p 16:9 (1344x768), 10 s |
+| Accelerator | `ref2v_turbo_4`, matches the checkpoint |
+| Seed | `1356908732712147419` — server-generated (008 ran `7827550934570530171`) |
+| VRAM | peak 69.35 / 94.97 GiB (73%) |
+| Time | 6 m 12 s end to end |
+| Result | `render/..._e64594_render_v008.mp4`, 4.9 MB |
+| Compared | `artifacts/..._e64594_sheet_v014_vs_render_v008.jpg` |
+
+### The user's verdict
+
+**Quality dropped against 008.** Resolution alone, holding the profile and
+checkpoint fixed, made this run worse, not better.
+
+**The critical failure is at the very end.** The last sampled frame is not a
+degraded version of the shot — it is a full figure in a masked, red-and-black
+suit, mid-leap over the skyline, standing in for whatever the blockout has in
+frame at that timecode. The look references are Spider-Verse stills (noted
+already under 009), and here the model did not take a palette or a material
+from them, it copied a subject wholesale. That is a sharper version of the
+006 water-tank failure — a look reference supplying content the geometry never
+asked for — taken to the point of reproducing a specific character rather than
+inventing a plausible building.
+
+**Still ahead of where this line of testing started.** Weighed against the
+very first H3 probes, which held no scene and no camera path from the
+blockout at all, a run that keeps the geometry for most of its length and
+breaks only at the reveal is progress, not regression — the regression is
+specifically against 008, not against the project's H3 baseline.
+
+**Of the 6 m 12 s, about 3.5 minutes was cold start**, by the user's read of
+the run. Sampling and decode account for a small fraction of the wall time
+this entry bills — a cold Modal container, not the resolution, is the
+dominant cost of this particular number. Unverified against per-phase
+timestamps, since the provider does not log phase transitions with times; see
+`src/ai_render/providers/h3zero.py`.
+
+### The seed was never pinned
+
+Found by auditing the executed graph after the verdict above was written, and it
+undercuts the comparison this run was for.
+
+The provider never sends a `seed`. The gateway's default is `null`, and the
+worker then does `secrets.randbelow(2**63)` per job. So **every H3 run in this
+log so far has had a different, random seed**, and none of them recorded it:
+
+| Run | Seed |
+| --- | --- |
+| 008 | `7827550934570530171` |
+| 010 | `1356908732712147419` |
+
+The server does return the seed it used, in both `request.seed` and
+`result.seed`. Nothing read it back, so `run.json` does not have it — the
+figures above were recovered afterwards by re-querying the finished jobs.
+
+**008 → 010 is therefore a two-variable change, not one.** At four steps with
+no CFG the seed is not a small perturbation, so "768p made it worse" is not
+supported by these two runs on its own. The end-of-shot failure is the harder
+evidence — a whole figure copied out of a look reference is a conditioning
+failure, not a seed unlucky at picking noise — but the general quality
+judgement between the two is confounded and should not be leaned on.
+
+What is settled: **resolution is not a free win here, and it is not shown to be
+the cause of anything.** 009 remains the only H3 run that held the blockout, and
+it still moved three things at once.
+
+### What the graph audit did settle
+
+The rest of the workflow was checked node by node against the pinned ComfyUI, and
+it is clean — worth recording because "the LoRA silently did nothing" is the
+failure that looks exactly like a bad model:
+
+- **LoRA strength 1.0, steps 4**, `res_multistep` / `simple`, `denoise 1.0` —
+  and the server's echo of the executed graph agrees with all of it.
+- **`scheduler` and `guider` both take the LoRA-patched model.** If only the
+  guider had, the sigma schedule would have come from unpatched weights.
+- **No CFG anywhere.** `BasicGuider`, one model call per step, no negative
+  conditioning — so guidance is structurally 1 and step count really is the only
+  lever, as 009's entry assumed.
+- **The LoRA is not a no-op.** All 208 of its module pairs bind to real
+  checkpoint weights, with nothing left over; checked by reading both
+  safetensors headers rather than by trusting the filename.
+- **int8 checkpoint plus bf16 LoRA is handled, not skipped.** The pinned ComfyUI
+  drops a LoRA-patched layer off its INT8 kernel onto a dequantized `linear`
+  deliberately — the patch applies, and costs speed rather than being ignored.
+- No dangling inputs, no orphaned nodes, references in the slots the prompt
+  names.
+
+---
+
+## 011 — the crossed LoRA, and the first pinned seed
+
+The accelerator changed from `ref2v_turbo_4` to `fl2v_turbo_4` — the
+distillation made from the *other* checkpoint, deliberately crossed onto
+Ref2VA. The seed was pinned at 1001 for the first time. Everything else matches
+010: Ref2VA, `turbo_4` at four steps, 768p, same prompt, same references.
+
+| | |
+| --- | --- |
+| Task | `144d60b871224647a36fe5664a6007ec` |
+| Model | `h3zero/ref2va/turbo_4`, 768p 16:9 (1344x768), 10 s |
+| Accelerator | `fl2v_turbo_4` — **crossed**, `lora_matches_checkpoint: false` |
+| Seed | **1001, pinned and confirmed** — requested and echoed back |
+| VRAM | peak 69.35 / 94.97 GiB (73%) |
+| Time | 5 m 49 s end to end |
+| Result | `render/..._e64594_render_v009.mp4`, 5.6 MB |
+| Compared | `artifacts/..._e64594_sheet_v015_vs_render_v009.jpg` |
+
+### The verdict
+
+**Better than 010, worse than 009** — that is the user's read on the finished
+clip, and it is the one this entry records. The paragraphs below describe what
+improved against 010; none of it adds up to matching `base` at 30 steps. The
+ordering so far is `base` (30 steps) > `fl2v_turbo_4` (4) > `ref2v_turbo_4` (4),
+which is a step-count ordering, and in a graph with no CFG step count is the
+only lever on how hard conditioning is enforced.
+
+### What improved against 010
+
+**t = 43%, the column that decides it.** A brick facade fills the frame, window
+rows where the blockout's ledges are, camera still climbing. 007 and 008 had
+already opened into an aerial here. Before this, only 009 had held that column
+at all — though holding it is not the same as holding it as well, and by the
+verdict above 009 still does it better.
+
+**t = 71%, the water tank.** On its steel frame, right side, filling a third of
+frame at the blockout's position and scale, with the rooftop AC units beside it
+and the parapet in front. This is the failure 006 named and 008 did not fix.
+
+**The look, which 009 could not do.** 009 held structure and came back as muted
+photoreal cinema; the references are dense, saturated comic-book illustration
+and it took almost nothing from them. This run is painterly and saturated,
+golden-hour amber, bay and bridge and skyline in the manner of the references
+rather than merely their content. **No H3 run before this one got both.**
+
+**And the character bleed is gone.** 010's last frame was a masked figure
+copied wholesale out of a look reference. Here the same timecode is the rooftop
+and the bay, with nothing borrowed that the geometry did not ask for.
+
+### What this does and does not attribute
+
+Two things moved against 010 — the LoRA and the seed — so this is not a clean
+one-variable result, and the entry says so rather than claiming otherwise.
+
+But the seed is a weak candidate for most of it. A different draw of noise
+explains a different image; it does not readily explain a *class* of failure
+disappearing, a look reference finally being obeyed as a look, and the two
+structural columns that broke in 007 and 008 both landing. The LoRA is the
+better explanation for that combination.
+
+**A mechanism worth testing, because it inverts what "crossed" means here.**
+`fl2v_turbo_4` carries `768p` in its own filename; `ref2v_turbo_4` is `v0.1`
+and names no resolution. Every run before 009 was at 480p, where that did not
+matter. 010 ran the *matching* distillation at 768p and 011 ran the *crossed*
+one — and the crossed one is the one distilled at the resolution both were run
+at. If that is what happened, then "matches the checkpoint" was the wrong axis
+to pair on at this resolution, and the honest label for `ref2v_turbo_4` at 768p
+is the mismatched one.
+
+### Cost
+
+**5 m 49 s, roughly $0.29** at the RTX PRO 6000 rate — against 009's 21 m 03 s
+and roughly $1.06. A quarter of the price for a result the user rates below it,
+which makes this a point on a price/quality curve rather than a replacement:
+the cheapest H3 configuration that holds the blockout at all, not the best one.
+
+### The seed, now recorded
+
+First run with `seed` sent rather than left to the worker. Requested 1001,
+echoed 1001. `run.json` also carries an `executed` block for the first time —
+model, seed, LoRA id, `lora_matches_checkpoint`, steps, sampler, scheduler and
+canvas, read off the graph the worker ran rather than off the request. Every
+comparison from here is checkable from disk without re-querying a job before
+its retention expires.
+
+---
+
+## 012 — eight steps, the first clean one-variable H3 run
+
+Against 011: `fl2v_turbo_8` in place of `fl2v_turbo_4`, and the profile moved
+to `turbo_8` so the graph actually samples eight steps. Checkpoint, resolution,
+prompt, references and **seed 1001** all identical. This is the first
+comparison in the H3 line where exactly one thing moved.
+
+| | |
+| --- | --- |
+| Task | `140303270ab740a59e9243ab605b39ae` |
+| Model | `h3zero/ref2va/turbo_8`, 768p 16:9 (1344x768), 10 s |
+| Accelerator | `fl2v_turbo_8` — crossed, `lora_matches_checkpoint: false` |
+| Seed | 1001 |
+| VRAM | peak 69.35 / 94.97 GiB (73%) |
+| Time | 6 m 51 s end to end |
+| Result | `render/..._e64594_render_v010.mp4`, 4.7 MB |
+| Compared | `artifacts/..._e64594_sheet_v016_vs_render_v010.jpg` |
+
+### The verdict
+
+**Second of all H3 runs, behind `base`, and the best of everything with a LoRA
+on it.** The user's read, and the one that stands.
+
+With it, the H3 line finally orders itself, and it orders by step count:
+
+| | Run | Configuration | Steps |
+| --- | --- | --- | --- |
+| 1 | 009 | `base`, no accelerator | 30 |
+| 2 | **012** | `fl2v_turbo_8`, crossed | 8 |
+| 3 | 011 | `fl2v_turbo_4`, crossed | 4 |
+| 4 | 010 | `ref2v_turbo_4`, matching | 4 |
+
+Three findings fall out of it, all the user's:
+
+**Steps decide it.** Nothing else in this line moved the result as reliably —
+which is what a graph with no CFG predicts, since step count is the only lever
+on how hard conditioning is enforced.
+
+**Four steps are provisionally not worth much.** Both four-step runs sit below
+both of the others, and the extra sampling costs about a minute (see below).
+
+**The official LoRA for the reference model is weak.** `ref2v_turbo_4` is the
+distillation MiniMax's own reference checkpoint is paired with by default, and
+it produced the worst run in the line — beaten at the same four steps by a
+distillation made from the *other* checkpoint. That inverts the assumption
+`DEFAULT_ACCELERATORS` encodes, and it is the reason `--lora` exists.
+
+**The working recommendation:** Ref2VA with the crossed eight-step FL LoRA for
+routine work, `base` when quality has to be maximal and twenty minutes is
+acceptable.
+
+### What eight steps bought
+
+**Structure holds where it held at four, and reads cleaner.** t = 43% is the
+facade climbing frame, now with air-conditioning units on the wall and legible
+window frames rather than blocks of light. t = 71% is the water tank on its
+steel frame at the blockout's position and scale, this time with a ladder up
+its side, the AC units and the parapet in front of it.
+
+**The reveal is calm.** No borrowed figure, no invented subject; bay, bridge,
+skyline and rooftop water towers, held to the end.
+
+### What eight steps cost
+
+**The comic-book manner is receding.** 011 at four steps was saturated and
+painterly, closest of any run to the look references. This is cleaner, softer
+and more photographic — drifting back toward the muted register 009 came back
+in. Two data points, but the direction is the same one 009 showed at thirty
+steps: **more steps buy structural fidelity and spend the stylisation.**
+
+If that holds, the look is not something more sampling will fix, and the lever
+for it is the prompt — where 009's entry already put the blame, on a long
+`detailed_description` written in physical terms with the one comic-book line
+buried in `retention_analysis`.
+
+### Cost, and what the wall clock actually measures
+
+**6 m 51 s against 011's 5 m 49 s — one extra minute for twice the sampling.**
+Which puts a number on the cold-start observation from 010: the fixed cost of
+starting a container and loading 69 GiB of weights dominates, and marginal
+steps are cheap. Roughly $0.35 against $0.29.
+
+That reframes the price/quality question. The gap between four steps and thirty
+is not 4:30 in money — 009 took 21 minutes, but much of that is the same fixed
+cost. Sampling more is the cheapest axis available here; resolution and cold
+starts are the expensive ones.
+
+---
+
 ## Reading the point figures
 
 Every Seedance entry above records cost in PiAPI points, because that is what the
