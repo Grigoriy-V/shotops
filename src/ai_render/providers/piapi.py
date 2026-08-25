@@ -19,6 +19,16 @@ Documented limits on omni_reference, none of them enforced here because no shot
 has come near one yet: up to 9 images, up to 3 videos, 1 to 15 references in
 total, mp4/mov video under 100 MB.
 
+The `-less-restriction` task types behave differently in two ways worth knowing
+before choosing one. They put every reference through the Private Asset Library
+themselves -- `auto_upload_assets` rewrites the URLs to `asset://...` with a
+168-hour retention, which is visible in the task's own `input` afterwards -- and
+they do not retry a content rejection: one refusal is the answer. They also
+price higher: 525,000 points per billed second against `fast`'s 480,000.
+
+A rejected task bills nothing either way. Points are frozen when it starts and
+restored on refusal, so finding out what a model will accept is free.
+
 Billing note from the API's own logs: "billing includes input + output
 duration". A 5s reference feeding a 5s output is charged as 10s, so the blockout
 is not free here the way it is in Blender.

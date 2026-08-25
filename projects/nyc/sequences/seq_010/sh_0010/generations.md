@@ -399,3 +399,91 @@ The look references. 004 cannot be repeated as written, and neither can 003.
 `styleframes/v002.png` — our own generation, and the only reference that depicts
 *this* street — is still unused, but the prompt names three images and there is
 one. That is a look decision, not a code one.
+
+---
+
+## 005 — 2026-08-25, the same refusal on a different tier
+
+One variable moved from 004: `seedance-2-fast-less-restriction` in place of
+`seedance-2-fast`. Same blockout, same three references, same prompt, same
+Supabase upload. Free again — `restored frozen points`, `consume: 0`.
+
+| | |
+| --- | --- |
+| Task | `5be024f3-e0a8-4787-881e-78de242fc864` |
+| Verdict | `failed` — *"The request was rejected due to copyright restrictions."* |
+| Held while running | `frozen: 10,500,000` |
+
+### What it settles
+
+**The model tier is not the variable.** Two runs, two tiers, one verdict. What
+is left is the references themselves.
+
+**Nor was the transport.** The docs warn that "signed / expiring URLs may fail",
+and the Supabase route publishes exactly those. It was worth removing as a
+suspect and it is now removed as a cause: the service fetched all four files and
+converted them to assets before rejecting the content. Whatever refused this,
+it had the pixels.
+
+**Rejection is final on `-less-restriction`.** 004's log shows *"Attempt 1
+failed (content restriction), retrying"*; this one has a single rejection. The
+docs say so, and the logs agree.
+
+### What it revealed, unasked
+
+```
+auto_upload_assets enabled, retention_hours=168, asset_quota_hold_hours=3
+auto_upload_assets: converted 4 url(s) to ephemeral asset://
+```
+
+**The `-less-restriction` tier puts every reference through the Private Asset
+Library by itself.** The task's `input` came back with `image_urls` and
+`video_urls` rewritten to `asset://asset-20260825223231-…` — ours were never
+sent as URLs at all past that point.
+
+Which answers a question that was about to be asked separately: pre-uploading
+assets by hand would not have changed this verdict, because moderation runs
+after the conversion, not before it. What manual upload *would* buy is an id we
+chose and can reuse — and reuse across shots is the interesting half, since
+"stable consistency across shots" is the open problem in
+[craft.md](../../../../docs/research/craft.md#the-open-problem-more-than-one-shot).
+Worth remembering that the library is a cache, not an archive: assets are purged
+after 3 to 15 days idle depending on plan.
+
+### Cost, updated
+
+| Run | Model | Billed | Points | Per billed second |
+| --- | --- | --- | --- | --- |
+| 001 | `seedance-2-mini-less-restriction` | 10 s in + 10 s out | 6,900,000 | 345,000 |
+| 002 | `seedance-2-fast` | 4 s in + 4 s out | 3,840,000 | 480,000 |
+| 003 | `seedance-2-fast` | 10 s in + 10 s out | 9,600,000 | 480,000 |
+| 004 | `seedance-2-fast` | rejected | 0 | — |
+| 005 | `seedance-2-fast-less-restriction` | rejected | 0 (10,500,000 held) | 525,000 |
+
+The held figure is the price of the tier, visible because a rejected task freezes
+before it refunds: **`-less-restriction` is about 9% dearer than `fast`.**
+
+And the thing worth saying plainly, because it changes how cheap this whole line
+of enquiry is: **a rejected task costs nothing.** Points are frozen at the start
+and restored on refusal. Probing what a model will accept is free; only success
+bills.
+
+### What changed in the pipeline because of these two runs
+
+- `run.json` now carries `task_id`, written before polling.
+- A failed task's real reason travels in the error, not just the vendor's
+  category. 005's manifest reads the whole log, which is how the
+  `auto_upload_assets` lines were noticed at all.
+- `audio` follows the API's default of true, which is what 003 ran with. 005's
+  `input` confirms it: `"audio": true`.
+- There are two uploaders now, `AI_RENDER_UPLOADER` choosing. Kept, though 005
+  showed the signed URL was never the problem.
+
+### Still open
+
+Unchanged and now the only thing in the way: **the same three files were
+accepted through the playground on 24 August and refused twice through the API on
+the 25th.** No explanation is available from either log, and the difference is
+not the tier, not the transport, and not the prompt. Whatever the reason, these
+references cannot be sent from here — which makes the look reference a decision
+to be made, not a bug to be found.
