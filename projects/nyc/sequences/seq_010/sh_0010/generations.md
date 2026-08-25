@@ -262,6 +262,38 @@ second probe costs 40% of the ten-second run.** Trimming the blockout is the
 cheapest instrument in the pipeline for anything that fails in the first
 seconds — which is where close-range dressing fails.
 
+### The config, captured
+
+*Added after the fact.* 002 and 003 were run in the playground, so for a while
+the best result in the project could not be reproduced by the project: the spec
+still said `seedance-2-mini`, a photorealistic prompt and no look references.
+That is now closed. `street_a.json` carries the model, the comic-book prompt and
+the three references, and `build_reference_prompt` generates the ownership
+sentence whenever references are attached.
+
+Two deliberate differences from what the playground sent, both kept because they
+were validated earlier or are plainly safer:
+
+- The contract still enumerates what `@video1` owns — camera motion, duration,
+  composition, shot scale, spatial relationships, object positions, model
+  structure, motion trajectory — where the hand-written version said "camera
+  movement, composition, and object positions". More specific, same intent.
+- It adds *take no camera, framing or object placement from the images*. 003 did
+  not say this and did not need to, but the references are frames with strong
+  compositions of their own, and this is the cheap guard against one of them
+  arriving as a layout.
+
+The prompt keeps `20mm anamorphic`, which had been struck out of the earlier
+prompt as camera vocabulary in a shot where the camera is geometry. It came back
+by hand in 002 and stayed for 003. It is at least no longer *wrong* — the scene
+renders on a 20 mm lens — and it is in the config that produced the good take,
+so it stays until something argues otherwise.
+
+Changing the prompt changes the scene id: `64dd03` → `f05888`, on a scene whose
+geometry did not move a millimetre. Everything already on disk still carries
+`64dd03` and still records what made it. Whether a blockout's id should depend
+on the prompt at all is an open question about `scene_id`, not about this shot.
+
 ### Where the seven directions stand now
 
 1. **A better style still.** **Overtaken.** Replaced by (4) rather than done.

@@ -154,6 +154,19 @@ def validate(spec):
             # than passing a typo through to a clear API error.
             if not isinstance(generation["model"], str) or not generation["model"].strip():
                 _fail("generation.model", f"must be a non-empty string, got {generation['model']!r}")
+        references = generation.get("style_references")
+        if references is not None:
+            # Order is meaning here -- the first entry becomes @image1 and the
+            # prompt refers to the tags by number, so a set or a mapping would
+            # lose the only thing that binds a file to a tag.
+            if not isinstance(references, list) or not references:
+                _fail("generation.style_references", "must be a non-empty list of paths")
+            for index, ref in enumerate(references):
+                if not isinstance(ref, str) or not ref.strip():
+                    _fail(
+                        f"generation.style_references[{index}]",
+                        f"must be a non-empty path relative to the scene file, got {ref!r}",
+                    )
 
     stills = spec.get("render", {}).get("stills", 8)
     if not isinstance(stills, int) or not 0 <= stills <= 30:

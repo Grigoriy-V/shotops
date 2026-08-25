@@ -21,7 +21,15 @@ KEEP = (
 DROP = "grey untextured material, flat shading, background, lighting and colour"
 
 
-def build_reference_prompt(prompt, mode, count, style=False):
+def _tags(count):
+    """`@image1`, `@image1 and @image2`, `@image1, @image2 and @image3`."""
+    names = [f"@image{i}" for i in range(1, count + 1)]
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + f" and {names[-1]}"
+
+
+def build_reference_prompt(prompt, mode, count, styles=0):
     """Prepend the reference contract to the look prompt.
 
     Two things earned their place here the expensive way. The kept properties
@@ -29,10 +37,16 @@ def build_reference_prompt(prompt, mode, count, style=False):
     is too vague to bind. And the blockout's own appearance is excluded
     explicitly, or the model reads flat grey as art direction.
 
-    With `style=True` the contract splits the shot in two, following
-    ByteDance's own white-model template: the blockout owns everything spatial,
-    a still owns material, lighting, colour and mood. Without a style still
-    those properties are told to no one, and the model picks them itself.
+    `styles` is how many look references are attached. With one or more, the
+    contract splits the shot in two: the blockout owns everything spatial, the
+    images own material, lighting, colour and mood. Without any, those
+    properties are told to no one and the model picks them itself.
+
+    The wording of the split is not invented here. It is what generation 003
+    sent by hand, generalised to N images -- and the sentence that did the work
+    is **appearance is determined solely by the images**. Saying only "do not
+    copy the blockout's colour" leaves the model free to read a red box as
+    art direction, which is exactly what generation 002 did.
 
     The `@video1` / `@image1` tags are positional: they refer to upload order in
     `video_urls` / `image_urls`, not to any name in the scene spec.
@@ -44,13 +58,15 @@ def build_reference_prompt(prompt, mode, count, style=False):
             f"{ref} is an untextured grey 3D blockout, not the intended look: "
             f"do not copy its {DROP}. "
         )
-        if style:
+        if styles:
+            tags = _tags(styles)
             preamble += (
-                "Use @image1 as the reference for material, lighting, colour, reflection "
-                f"and overall atmosphere. Replace the white-model surfaces of {ref} with "
-                "real materials matching @image1. Take no camera, framing or object "
-                "placement from @image1 -- those come from "
-                f"{ref} alone."
+                f"{ref} is a guide for movement and composition only. Do not rely on "
+                f"the appearance of {ref} or of the objects in it. Appearance is "
+                f"determined solely by {tags}: use {'them' if styles > 1 else 'it'} as "
+                "the reference for material, lighting, colour, reflection and overall "
+                f"atmosphere. Take no camera, framing or object placement from "
+                f"{'them' if styles > 1 else 'it'} -- those come from {ref} alone."
             )
         else:
             preamble += (
@@ -65,7 +81,7 @@ def build_reference_prompt(prompt, mode, count, style=False):
             f"look: do not copy its {DROP}."
         )
     else:
-        tags = ", ".join(f"@image{i}" for i in range(1, count + 1))
+        tags = _tags(count)
         preamble = (
             f"{tags} are consecutive frames of one continuous camera move, in upload order, "
             f"sampled from an untextured grey 3D blockout. Keep the {KEEP} they describe "
@@ -82,13 +98,14 @@ class VideoProvider:
         reference_video: Path,
         generation: dict,
         out_path: Path,
-        style_image: Path | None = None,
+        style_images: list[Path] | None = None,
     ) -> Path:
         """Turn a grey blockout clip into the finished shot.
 
-        `style_image` is the optional `@image1` look reference. Providers that
-        cannot attach one must say so rather than silently dropping it -- a shot
-        that quietly ignores your art direction is worse than one that refuses.
+        `style_images` are the optional `@image1..N` look references, in the
+        order they should be tagged. Providers that cannot attach them must say
+        so rather than silently dropping them -- a shot that quietly ignores
+        your art direction is worse than one that refuses.
         """
         raise NotImplementedError
 

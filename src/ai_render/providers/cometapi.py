@@ -106,12 +106,12 @@ class CometSeedance(VideoProvider):
 
     # ------------------------------------------------------------------ main
 
-    def generate(self, reference_video, generation, out_path, style_image=None):
+    def generate(self, reference_video, generation, out_path, style_images=None):
         import requests
 
-        if style_image:
+        if style_images:
             raise ValueError(
-                "the CometAPI provider cannot attach a style reference -- its Seedance "
+                "the CometAPI provider cannot attach style references -- its Seedance "
                 "route has no omni_reference mode. Use --provider piapi."
             )
         mode = generation.get("reference_mode", "video")

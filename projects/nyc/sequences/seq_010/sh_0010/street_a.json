@@ -1058,6 +1058,12 @@
     }
   ],
   "generation": {
-    "prompt": "Photorealistic live-action footage of a dense city street at golden hour. Every red form is a car: sedans parked along both kerbs and two stopped out in the traffic lane, in mixed city paint with chrome trim, dark glass and rubber tyres. Asphalt is wet and dark, catching long specular streaks. Facades are weathered brick and grey stone with fire escapes and dark glass. Low sun rakes down the street from ahead, warm amber, throwing long shadows and lens flare through haze and drifting dust. Above the rooftops the sky opens onto a wide bay at sunset, a long suspension bridge in silhouette, and distant towers hazed in orange light. Deep contrast, fine film grain."
+    "model": "seedance-2-fast",
+    "style_references": [
+      "styleframes/lookref_a.png",
+      "styleframes/lookref_b.png",
+      "styleframes/lookref_c.png"
+    ],
+    "prompt": "colorful comic-book-style footage, shot on 20mm anamorphic film, of a busy city street at golden hour. The low sun glides down the street ahead, the warm amber light casting long shadows and highlights through the haze and rising dust. Above the rooftops, a view opens onto a wide bay at sunset, the silhouette of a long suspension bridge, and distant towers bathed in orange light."
   }
 }

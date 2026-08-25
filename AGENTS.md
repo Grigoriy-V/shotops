@@ -114,6 +114,12 @@ from the model as a box.
 cheap and answers the question a frame cannot — where everything is, and where
 the camera actually goes.
 
+**A run that only exists in a flag is a run nobody can repeat.** Model, prompt
+and `style_references` belong in the scene's `generation` block. Flags are for
+probing without editing the scene; the moment a configuration is the right one,
+it goes in the file. This is the whole premise — a shot whose best version lives
+in a chat log is not source-controlled, whatever the repository says.
+
 Craft findings — what a video model holds, where it drifts, what a blockout has
 to supply — are not rules and do not belong here. Survey material goes in
 [docs/research/craft.md](docs/research/craft.md); what a particular shot taught

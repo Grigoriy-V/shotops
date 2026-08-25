@@ -525,7 +525,12 @@ without Blender installed.
     "reference_mode": "video",  // video | frames | first
     "duration": 5,              // 4-30
     "resolution": "720p",       // 480p | 720p; 1080p on seedance-2 only
-    "aspect_ratio": "16:9"
+    "aspect_ratio": "16:9",
+    "model": "seedance-2-fast",
+    "style_references": [       // look references, in tag order: @image1, @image2 ...
+      "styleframes/lookref_a.png",
+      "styleframes/lookref_b.png"
+    ]
   }
 }
 ```
@@ -555,6 +560,13 @@ linear.
 prepends the reference contract itself. Everything spatial — blocking, framing,
 camera path — comes from the blockout; the prompt's job is only to say what the
 surfaces are made of and how they are lit.
+
+`style_references` are paths relative to the scene file, and **order is
+meaning**: the first becomes `@image1`. When any are present the contract adds
+the sentence that decides the shot — *appearance is determined solely by the
+images* — and tells the model to take no framing from them. Repeated `--style`
+flags override the list for one run without editing the scene, and a
+`styleframe.png` sitting in the take is the last resort.
 
 ### Why the provider is PiAPI
 
@@ -620,17 +632,16 @@ Two API details worth knowing: `input_fidelity` must **not** be sent to
 `gpt-image-2` (it always runs at high fidelity and rejects the parameter), and
 `size` defaults to `auto` here so the edit keeps the frame's proportions.
 
-**This section describes what the CLI does, not what has worked best.** The two
-runs that fixed the NYC shot used no style still: three unrelated look
-references, plus a prompt line saying the video is a guide for movement and
-composition only and that appearance comes solely from the images. A still made
+**A style still is one way to do this, and not the one that has worked best.**
+The two runs that fixed the NYC shot used no style still at all: three unrelated
+look references, which is what `generation.style_references` is for. A still made
 by restyling the blockout is made *before* the dressing is settled, and then
-disagrees with it — which is how two cars got dropped. References that carry
-only palette and render style have nothing to disagree with.
+disagrees with it — which is how two cars got dropped. References that carry only
+palette and render style have nothing to disagree with.
 
-The provider layer takes a single `style_image` and sends one `@image1`, so that
-arrangement is not reachable from `generate` yet. Making `--style` repeatable,
-and putting the ownership line into `build_reference_prompt`, is the open work.
+The command is still worth having when a shot genuinely needs its own frame.
+Both routes end up in the same list: `styleframe.png` in the take is simply the
+last place `generate` looks.
 
 ## Cost
 

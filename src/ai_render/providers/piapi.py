@@ -78,7 +78,7 @@ class PiapiSeedance(VideoProvider):
         session.headers.update({"X-API-Key": key, "Content-Type": "application/json"})
         return session
 
-    def generate(self, reference_video, generation, out_path, style_image=None):
+    def generate(self, reference_video, generation, out_path, style_images=None):
         mode = generation.get("reference_mode", "video")
         if mode != "video":
             raise ValueError(
@@ -106,8 +106,11 @@ class PiapiSeedance(VideoProvider):
         image_urls = []
         cleanups = [cleanup]
         try:
-            if style_image:
-                style_url, style_cleanup = uploader.upload(Path(style_image))
+            # Upload order is the tag order: the first file becomes @image1.
+            # Nothing downstream can recover the mapping if this is shuffled,
+            # so the list arrives ordered and is used as given.
+            for image in style_images or []:
+                style_url, style_cleanup = uploader.upload(Path(image))
                 cleanups.append(style_cleanup)
                 image_urls.append(style_url)
 
@@ -116,7 +119,7 @@ class PiapiSeedance(VideoProvider):
                 "task_type": self.task_type,
                 "input": {
                     "prompt": build_reference_prompt(
-                        generation["prompt"], mode, 1, style=bool(style_image)
+                        generation["prompt"], mode, 1, styles=len(image_urls)
                     ),
                     # The whole ballgame: without omni_reference the references
                     # are accepted and then ignored.
@@ -134,7 +137,11 @@ class PiapiSeedance(VideoProvider):
             if "seed" in generation:
                 payload["input"]["seed"] = int(generation["seed"])
 
-            style_note = " + @image1 style" if image_urls else ""
+            style_note = (
+                f" + {len(image_urls)} style reference{'s' if len(image_urls) != 1 else ''}"
+                if image_urls
+                else ""
+            )
             print(
                 f"[generate] piapi/{self.task_type} -- {payload['input']['duration']}s "
                 f"@ {resolution} {aspect_ratio}, mode=omni_reference{style_note}"

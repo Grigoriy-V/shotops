@@ -154,7 +154,8 @@ decision is still right; what was wrong was assuming a box could take it.
 *2026-08-25, in answer to generation 001.* Each car was one cube. Each is now
 eight primitives: a lower body, a greenhouse set back from centre, a raked
 windscreen, a steeper rear screen, and four wheels laid on their sides. The body
-is red — a colour the prompt is allowed to name — with dark glass and near-black
+is red — chosen so the prompt could name it, though by 003 the prompt no longer
+needed to; see the marker note under Open — with dark glass and near-black
 tyres, so a car carries three values and a hue where it used to carry one.
 
 **The footprint did not change.** Every part is a fraction of the car's own
@@ -180,10 +181,11 @@ proportions from one rule.
 
 - ~~Roll sign unverified~~ — **settled.** The bank reads correctly in the
   preview, into the turn in both weaves and at the roof crest. No change needed.
-- ~~The prompt says "shot on 24mm anamorphic"~~ — **removed.** The lens is
-  camera vocabulary in a prompt where the camera is already geometry, and it
-  disagreed with the 20 mm actually being rendered. The prompt now names the red
-  forms as cars instead.
+- ~~The prompt says "shot on 24mm anamorphic"~~ — **corrected, not removed.**
+  It was taken out as camera vocabulary in a shot where the camera is geometry;
+  it came back by hand as `20mm anamorphic` in generations 002 and 003, and that
+  is the config that produced the good take, so it is in the spec. It is at
+  least no longer contradicting the render.
 - ~~The bay, the bridge and the sunset are not built~~ — **settled by generation
   001.** The prompt supplied all of it and held it for the full reveal. No
   silhouette band needs building.

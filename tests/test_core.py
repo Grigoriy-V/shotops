@@ -428,6 +428,53 @@ expect_error("bad reference_mode", lambda s: s["generation"].update(reference_mo
 expect_error("duration out of range", lambda s: s["generation"].update(duration=99))
 expect_error("too many stills", lambda s: s["render"].update(stills=50))
 expect_error("frames mode without stills", lambda s: (s["generation"].update(reference_mode="frames"), s["render"].update(stills=1)))
+expect_error("style_references not a list", lambda s: s["generation"].update(style_references="a.png"))
+expect_error("empty style_references", lambda s: s["generation"].update(style_references=[]))
+expect_error("blank style reference", lambda s: s["generation"].update(style_references=["a.png", "  "]))
+
+print("style references -- where they come from, and in what order")
+from ai_render.cli import _style_references  # noqa: E402
+
+with _tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    (root / "styleframes").mkdir()
+    for stem in ("a", "b", "c"):
+        (root / "styleframes" / f"{stem}.png").write_bytes(b"")
+    take = root / "take"
+    take.mkdir()
+
+    class FakeTarget:
+        scene_path = root / "scene.json"
+
+    spec_refs = {"style_references": ["styleframes/a.png", "styleframes/b.png"]}
+    resolved = _style_references(None, spec_refs, FakeTarget(), take)
+    check("spec paths resolve against the scene file", [p.name for p in resolved], ["a.png", "b.png"])
+
+    flagged = _style_references([str(root / "styleframes" / "c.png")], spec_refs, FakeTarget(), take)
+    check("flags beat the scene's list", [p.name for p in flagged], ["c.png"])
+
+    # Order is the only thing binding a file to its @image tag, so a reversed
+    # list has to come back reversed rather than sorted back into place.
+    backwards = {"style_references": ["styleframes/b.png", "styleframes/a.png"]}
+    check(
+        "order is preserved, not sorted",
+        [p.name for p in _style_references(None, backwards, FakeTarget(), take)],
+        ["b.png", "a.png"],
+    )
+
+    check("no references at all is fine", _style_references(None, {}, FakeTarget(), take), [])
+    (take / "styleframe.png").write_bytes(b"")
+    check(
+        "a styleframe in the take is the last resort",
+        [p.name for p in _style_references(None, {}, FakeTarget(), take)],
+        ["styleframe.png"],
+    )
+    try:
+        _style_references(None, {"style_references": ["nope.png"]}, FakeTarget(), take)
+        failures.append("missing style reference: expected FileNotFoundError")
+        print("  FAIL missing reference is caught before uploading")
+    except FileNotFoundError:
+        print("  ok   missing reference is caught before uploading")
 
 print("cometapi -- size table")
 from ai_render.providers.cometapi import CometSeedance, resolve_size  # noqa: E402
@@ -456,6 +503,25 @@ check("video mode uses the native @video1 tag", "@video1" in video_desc, True)
 check("no bracket-style tags anywhere", "[Video" not in video_desc and "[Image" not in described, True)
 check("enumerates what to keep", "motion trajectory" in video_desc, True)
 check("excludes the blockout's own look", "do not copy" in video_desc.lower(), True)
+
+# The sentence that separated generation 003 from 002. Without it the model
+# reads a red box as art direction instead of as a marker, and paints the whole
+# frame that colour -- so this is a contract term, not decoration.
+styled = build_reference_prompt("a granite monolith", "video", 1, styles=3)
+check("tags every look reference", all(f"@image{i}" in styled for i in (1, 2, 3)), True)
+check(
+    "hands appearance to the images alone",
+    "appearance is determined solely by" in styled.lower(),
+    True,
+)
+check(
+    "and takes no framing from them",
+    "no camera, framing or object placement" in styled,
+    True,
+)
+check("no style references, no split", "@image1" not in video_desc, True)
+one = build_reference_prompt("a granite monolith", "video", 1, styles=1)
+check("one reference reads as singular", "use it as the reference" in one, True)
 
 print("cometapi -- response url extraction")
 for label, body in [
@@ -502,11 +568,13 @@ import inspect  # noqa: E402
 
 for provider_name in ("piapi", "comet"):
     params = inspect.signature(get_provider(provider_name).generate).parameters
-    check(f"{provider_name} accepts style_image", "style_image" in params, True)
+    check(f"{provider_name} accepts style_images", "style_images" in params, True)
 
 try:
-    get_provider("comet").generate(Path("a.mp4"), {"prompt": "x"}, Path("o.mp4"), style_image=Path("s.png"))
-    failures.append("comet style_image: expected ValueError")
+    get_provider("comet").generate(
+        Path("a.mp4"), {"prompt": "x"}, Path("o.mp4"), style_images=[Path("s.png")]
+    )
+    failures.append("comet style_images: expected ValueError")
     print("  FAIL comet refuses style frames explicitly")
 except ValueError:
     print("  ok   comet refuses style frames explicitly")
@@ -593,7 +661,7 @@ import tempfile  # noqa: E402
 
 from ai_render import env as env_mod  # noqa: E402
 
-with tempfile.TemporaryDirectory() as tmp:
+with _tempfile.TemporaryDirectory() as tmp:
     env_path = Path(tmp) / ".env"
     env_path.write_text(
         "# a comment\n"

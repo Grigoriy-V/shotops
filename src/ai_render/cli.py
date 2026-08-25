@@ -37,8 +37,21 @@ def cmd_check(args):
     print(f"ok -- {target.label}: {len(scene.get('objects', []))} objects, {frames} frames")
     if scene.get("role") == "asset":
         print("note: role 'asset' -- scratch work, not a candidate for the shot")
-    if not scene.get("generation"):
+    generation = scene.get("generation") or {}
+    if not generation:
         print("note: no 'generation' block, so only `render` will work")
+    # Checked here rather than in `spec` because only the CLI knows where the
+    # scene file sits, and a reference that does not exist is a failure worth
+    # catching now: the alternative is finding out after the blockout has been
+    # uploaded and the meter has started.
+    base = target.scene_path.parent
+    missing = [r for r in generation.get("style_references", []) if not (base / r).exists()]
+    if missing:
+        print(f"error: style reference not found: {', '.join(missing)}", file=sys.stderr)
+        return 1
+    if generation.get("style_references"):
+        count = len(generation["style_references"])
+        print(f"ok -- {count} style reference{'s' if count != 1 else ''}, tagged @image1..{count}")
     return 0
 
 
@@ -185,6 +198,35 @@ def cmd_sheet(args):
     return 0
 
 
+def _style_references(flags, generation, target, take):
+    """The `@image1..N` look references, in tag order.
+
+    Three sources, most explicit first: repeated `--style` flags, the scene's
+    own `generation.style_references`, and finally a `styleframe.png` sitting in
+    the take. The scene's list is the one that matters -- a look that lives in a
+    flag is a look nobody can reproduce, and the run that fixed the NYC shot was
+    unrepeatable for exactly that reason.
+
+    Spec paths resolve against the scene file, not the working directory, so a
+    shot carries its references with it.
+    """
+    if flags:
+        paths = [Path(f) for f in flags]
+    elif generation.get("style_references"):
+        base = target.scene_path.parent
+        paths = [(base / ref).resolve() for ref in generation["style_references"]]
+    else:
+        fallback = take / "styleframe.png"
+        return [fallback] if fallback.exists() else []
+
+    missing = [p for p in paths if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            "style reference not found: " + ", ".join(str(_rel(p)) for p in missing)
+        )
+    return paths
+
+
 def cmd_generate(args):
     scene, target = _load(args.scene)
     generation = scene.get("generation")
@@ -205,14 +247,11 @@ def cmd_generate(args):
         generation = {**generation, "resolution": args.resolution}
     model = args.model or generation.get("model")
 
-    # A style still is opt-in and lives with its take, so several generations
-    # can share one rather than paying for it each time.
-    style_image = Path(args.style) if args.style else take / "styleframe.png"
-    if not style_image.exists():
-        if args.style:
-            print(f"error: no style frame at {style_image}", file=sys.stderr)
-            return 2
-        style_image = None
+    try:
+        style_images = _style_references(args.style, generation, target, take)
+    except FileNotFoundError as missing:
+        print(f"error: {missing}", file=sys.stderr)
+        return 2
 
     provider = get_provider(args.provider, model=model)
     resolved_model = getattr(provider, "task_type", None) or getattr(provider, "model", "default")
@@ -225,13 +264,13 @@ def cmd_generate(args):
         provider=provider.name,
         model=resolved_model,
         generation=generation,
-        style_frame=str(_rel(style_image)) if style_image else None,
+        style_references=[str(_rel(p)) for p in style_images],
         started_at=datetime.now(timezone.utc).isoformat(),
     )
     print(f"[generate] {_rel(out_dir)}")
 
     try:
-        provider.generate(preview, generation, out_dir / "final.mp4", style_image=style_image)
+        provider.generate(preview, generation, out_dir / "final.mp4", style_images=style_images)
     except Exception as exc:
         # A failed attempt is still a record worth keeping -- it is the reason
         # the next attempt is different.
@@ -410,7 +449,13 @@ def main(argv=None):
                 default=0,
                 help="also pull N stills from the result and build a comparison sheet",
             )
-            p.add_argument("--style", help="style reference image (default: <take>/styleframe.png)")
+            p.add_argument(
+                "--style",
+                action="append",
+                metavar="PATH",
+                help="look reference image, repeatable -- first becomes @image1. "
+                "Beats the scene's 'style_references', which beats <take>/styleframe.png.",
+            )
         if name == "audit":
             p.add_argument(
                 "--closest", type=int, default=8,
