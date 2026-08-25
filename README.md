@@ -343,7 +343,7 @@ A scene does not carry its identity; its path does.
 ```
 projects/nyc/
   project.json                  <- fps, resolution, aspect: defaults for everything below
-  assets/                       <- work that belongs to no sequence
+  assets/                       <- reusable parts: a car, a water tower
   sequences/seq_010/
     sequence.json
     sh_0010/
@@ -547,6 +547,46 @@ without Blender installed.
 
 Animatable channels: `location`, `rotation`, `scale`, plus `look_at`, `lens`,
 `roll`, `pan` and `tilt` on the camera.
+
+### Assets and instances
+
+Repeated geometry goes in `projects/<proj>/assets/<name>.json` and is placed by
+an `instances` list:
+
+```jsonc
+"instances": [
+  { "asset": "sedan", "name": "car_01", "location": [5.9, -104, 0], "size": [1.9, 4.6, 1.5] },
+  { "asset": "sedan", "name": "car_06", "location": [-1.7, -52, 0], "size": [2.1, 5.6, 1.8],
+    "rotation": [0, 0, 180] }
+]
+```
+
+An asset declares its parts **in the unit space of its own bounding box**: `x`
+and `y` as fractions of width and length from the centre, `z` as a fraction of
+height up from the ground, `scale` as fractions of all three. Radii and depths
+are fractions too — `size` follows height and `depth` follows width, which is
+what a wheel wants. The instance supplies the footprint, so a saloon and a van
+come out of one recipe at their own proportions.
+
+This is what "version the recipe, not the result" means in practice. Eight cars
+of eight primitives went into the NYC shot as **64 objects with the rule thrown
+away**; changing the windscreen rake meant editing 64 blocks. They are now eight
+lines and one asset file, and the rake is one number in one place.
+
+`rotation` on an instance is a turn about Z and nothing else. That is a real
+constraint, not an omission: a yaw folds exactly into each part's own XYZ euler,
+where a general rotation would need composing, and a wrong composition is
+invisible in a grey render and obvious in the result.
+
+The known limit is that **a non-uniform footprint skews a rotated part.** A
+windscreen raked 34.8° on a 4.6 m car wants 33.3° on a 5.2 m one, because the
+rake is rise over run; an asset stores one angle, so the wide instances are a
+degree or two out. Nothing fixes that while a raked pane is a rotated box.
+
+Expansion happens once, when the spec is loaded, so Blender, `audit` and `check`
+all measure the same geometry — and `scene_id` hashes the expansion, because
+editing an asset changes the shot and an id that ignored it would call two
+different shots the same one.
 
 `look_at` aims the camera; the three angles rotate it about its own axes
 afterwards, in degrees. `roll` banks it — without that a flight reads as a drone

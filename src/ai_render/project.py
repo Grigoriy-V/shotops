@@ -29,6 +29,8 @@ import json
 import re
 from pathlib import Path
 
+from . import assets
+
 PROJECTS_DIR = "projects"
 SEQUENCES_DIR = "sequences"
 ASSETS_DIR = "assets"
@@ -335,4 +337,22 @@ def load_spec(path):
         merged = merge(merged, data)
     merged = merge(merged, _read(target.scene_path))
     merged.setdefault("name", target.scene)
+    # Instances become objects here and nowhere else, so Blender, `audit` and
+    # `check` are all looking at the same geometry. It also means `scene_id`
+    # hashes the expansion, which is the only honest choice: editing an asset
+    # changes the scene, and an id that ignored the asset would say two
+    # different shots were the same one.
+    merged = assets.expand(merged, assets_dir(target))
     return merged, target
+
+
+def assets_dir(target):
+    """Where `instances` look their assets up: `projects/<proj>/assets/`.
+
+    None for a standalone file, which has no project to hold a library.
+    """
+    if target.kind == "shot":
+        return target.scene_path.parents[3] / ASSETS_DIR
+    if target.kind == "asset":
+        return target.scene_path.parent
+    return None

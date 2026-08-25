@@ -1,0 +1,76 @@
+{
+  "role": "asset",
+  "note": "A saloon in the unit space of its own bounding box: x and y as fractions of width and length from the centre, z as a fraction of height up from the road. Instances supply the footprint, so a saloon and a van come out of the same eight parts at their own proportions. The rake is what makes it read as a car at a metre -- a body box under a roof box is a flatbed.",
+  "parts": [
+    {
+      "name": "body",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 0.0, 0.48],
+      "scale": [1.0, 1.0, 0.4],
+      "color": [0.75, 0.08, 0.06]
+    },
+    {
+      "name": "roof",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -0.05, 0.84],
+      "scale": [0.76, 0.34, 0.32],
+      "color": [0.16, 0.17, 0.2]
+    },
+    {
+      "name": "windscreen",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 0.195, 0.84],
+      "scale": [0.76, 0.18283, 0.05],
+      "rotation": [-34.8, 0, 0],
+      "color": [0.16, 0.17, 0.2]
+    },
+    {
+      "name": "backlight",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -0.27, 0.84],
+      "scale": [0.76, 0.14457, 0.05],
+      "rotation": [-133.8, 0, 0],
+      "color": [0.16, 0.17, 0.2]
+    },
+    {
+      "name": "wheel_1",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [-0.43, -0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    },
+    {
+      "name": "wheel_2",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [0.43, -0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    },
+    {
+      "name": "wheel_3",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [-0.43, 0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    },
+    {
+      "name": "wheel_4",
+      "type": "cylinder",
+      "size": 0.235,
+      "depth": 0.14,
+      "location": [0.43, 0.3, 0.235],
+      "rotation": [0, 90, 0],
+      "color": [0.07, 0.07, 0.08]
+    }
+  ]
+}

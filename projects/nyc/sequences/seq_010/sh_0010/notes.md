@@ -193,12 +193,22 @@ proportions from one rule.
   Blender, and it fails the command when the camera is inside something.
 - ~~Audio comes back enabled~~ — **accepted.** It arrives from a server hint,
   costs nothing extra, and is not worth a switch until something needs it off.
-- **The car is a recipe, and the spec holds the baked result.** Eight parts came
-  out of one rule about a footprint, and what landed in `street_a.json` is
-  sixty-four objects with the rule thrown away. Changing the windscreen rake now
-  means editing sixty-four entries by hand. This is exactly the thing the README
-  claims the project is for — version the recipe, not the result — and the scene
-  format has no way to say it yet.
+- ~~The car is a recipe, and the spec holds the baked result~~ — **fixed.** The
+  rule lives in [`assets/sedan.json`](../../../assets/sedan.json), declared in
+  the unit space of the car's own bounding box, and the scene places eight
+  instances. Sixty-four objects became eight lines; the windscreen rake is one
+  number in one file. Verified rather than assumed: the expanded geometry
+  matches the old bake to within 0.5 mm on the six identical cars and 15 mm on
+  the three odd-sized ones, and `audit` returns the same clearances to the
+  centimetre — 0.95 m to `car_03_body` at t = 1.62, 0.95 m to `car_06_body` at
+  t = 2.88. The only line that changed is a wheel's *name*, because a 180°
+  instance yaw renumbers them.
+- **A non-uniform footprint skews a rotated part.** The asset stores one
+  windscreen rake, 34.8°, taken from the 1.9 × 4.6 m car. The 5.2 m and 5.6 m
+  instances want 33.3° and 34.4°, because the rake is rise over run. Fifteen
+  millimetres at the pane's edge, invisible here, and unfixable while a raked
+  pane is a rotated box. A part whose polygons are placed in unit space would
+  get it right for free — which is the next thing to try on this car.
 - ~~The two mid-road cars are still unproven~~ — **proven.** Generations 002 and
   003 both bring them back as cars at the 0.95 m pass, with wheels, glass, tail
   lights and plates. The 001 failure does not recur.

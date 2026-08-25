@@ -110,6 +110,13 @@ inference — a box in a row along a kerb reads as a parked car because the stre
 says so. Proximity spends it: the same box at a metre, filling frame, comes back
 from the model as a box.
 
+**Anything built from a rule goes in an asset, not in the scene.** If eight
+objects came out of one idea about a footprint, the scene gets an `instances`
+entry and `projects/<proj>/assets/` gets the rule. Baking it out and pasting the
+result is how a spec stops being a recipe and becomes a build artefact — and
+then a one-line change is sixty-four hand edits. Author in the unit space of the
+asset's own bounding box so one recipe covers every size it is used at.
+
 **Look before believing.** A spec you have not rendered is a guess. `views` is
 cheap and answers the question a frame cannot — where everything is, and where
 the camera actually goes.

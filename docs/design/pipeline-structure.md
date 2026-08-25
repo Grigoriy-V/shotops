@@ -13,8 +13,8 @@ a second shot, and the cost of changing it grew with every take on disk.
 projects/
   nyc/                              <- project
     project.json                    <- fps, resolution, aspect, defaults
-    assets/                         <- work that belongs to no sequence
-      water_tower.json
+    assets/                         <- reusable parts, placed by `instances`
+      sedan.json
     sequences/
       seq_010/                      <- sequence
         sequence.json

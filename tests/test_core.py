@@ -451,6 +451,85 @@ expect_ok(
     lambda s: (s["generation"].pop("prompt"), s["generation"].update(full_prompt="send this")),
 )
 
+print("assets -- an instance is the recipe times the footprint")
+from ai_render import assets as assets_mod  # noqa: E402
+
+SEDAN = {
+    "parts": [
+        {"name": "body", "type": "cube", "size": 1.0,
+         "location": [0.0, 0.0, 0.48], "scale": [1.0, 1.0, 0.4]},
+        {"name": "screen", "type": "cube", "size": 1.0,
+         "location": [0.0, 0.195, 0.84], "scale": [0.76, 0.18, 0.05],
+         "rotation": [-34.8, 0, 0]},
+        {"name": "wheel", "type": "cylinder", "size": 0.235, "depth": 0.14,
+         "location": [-0.43, -0.3, 0.235], "rotation": [0, 90, 0]},
+    ]
+}
+
+
+_assets = Path(_tempfile.mkdtemp())
+(_assets / "sedan.json").write_text(json.dumps(SEDAN), encoding="utf-8")
+(_assets / "odd.json").write_text(
+    json.dumps({"parts": [{"name": "odd", "type": "cube", "rotation": [10, 0, 20]}]}),
+    encoding="utf-8",
+)
+
+
+def expand_one(instance):
+    return assets_mod.expand({"objects": [], "instances": [instance]}, _assets)
+
+
+base ={"asset": "sedan", "name": "car", "location": [5.9, -104, 0], "size": [1.9, 4.6, 1.5]}
+made = expand_one(base)["objects"]
+by_name = {o["name"]: o for o in made}
+check("one instance, three parts", len(made), 3)
+check("parts are named after the instance", sorted(by_name), ["car_body", "car_screen", "car_wheel"])
+# The unit convention: x and y from the centre, z up from the ground.
+check("body sits at 0.48 of the height", by_name["car_body"]["location"], [5.9, -104.0, 0.72])
+check("and is the full footprint", by_name["car_body"]["scale"], [1.9, 4.6, 0.6])
+# `size` on a cube is the base edge scale already multiplies; scaling it here
+# would apply the footprint twice and make every boxed part the wrong size.
+check("a cube keeps its literal size", by_name["car_body"]["size"], 1.0)
+check("a radius is a fraction of height", by_name["car_wheel"]["size"], 0.235 * 1.5)
+check("a depth is a fraction of width", by_name["car_wheel"]["depth"], 0.14 * 1.9)
+
+# The point of the whole thing: a bigger footprint, the same recipe.
+van = expand_one({**base, "size": [2.1, 5.6, 1.8]})["objects"]
+van_body = next(o for o in van if o["name"] == "car_body")
+check("a van comes out of the same asset", van_body["scale"], [2.1, 5.6, 0.72])
+
+# A yaw turns the offsets and folds into each part's own euler, which is exact
+# because Rz(yaw) @ Ry(b) @ Rx(c) is itself an XYZ euler with z = yaw.
+turned = expand_one({**base, "rotation": [0, 0, 180]})["objects"]
+turned_by_name = {o["name"]: o for o in turned}
+check("yaw mirrors the offset", turned_by_name["car_screen"]["location"][1], -104 - 0.195 * 4.6)
+check("and lands in the part's z", turned_by_name["car_screen"]["rotation"], [-34.8, 0.0, 180.0])
+check("x offsets mirror too", turned_by_name["car_wheel"]["location"][0], 5.9 + 0.43 * 1.9)
+
+check("no instances, no change", assets_mod.expand({"objects": [1]}, None), {"objects": [1]})
+
+
+def expect_asset_error(label, instance):
+    try:
+        expand_one(instance)
+        failures.append(f"{label}: expected an AssetError")
+        print(f"  FAIL {label}")
+    except assets_mod.AssetError as exc:
+        print(f"  ok   {label} -> {exc}")
+
+
+expect_asset_error("tilted instance", {**base, "rotation": [15, 0, 0]})
+expect_asset_error("size that is not three numbers", {**base, "size": [1.9, 4.6]})
+expect_asset_error("instance naming no asset", {"name": "car", "location": [0, 0, 0]})
+# Rz(yaw) @ Rz(rz) @ Ry(ry) @ Rx(rx) is not an XYZ euler when there is a turn
+# between the two Z rotations, and a wrong composition is invisible in a grey
+# render and obvious in the result.
+expect_asset_error(
+    "yaw onto a part already turning about Z and X",
+    {**base, "asset": "odd", "rotation": [0, 0, 90]},
+)
+expect_asset_error("an asset that is not there", {**base, "asset": "hatchback"})
+
 print("style references -- where they come from, and in what order")
 from ai_render.cli import _style_references  # noqa: E402
 
@@ -467,10 +546,10 @@ with _tempfile.TemporaryDirectory() as tmp:
 
     spec_refs = {"style_references": ["styleframes/a.png", "styleframes/b.png"]}
     resolved = _style_references(None, spec_refs, FakeTarget(), take)
-    check("spec paths resolve against the scene file", [p.name for p in resolved], ["a.png", "b.png"])
+    check("spec paths resolve against the shot directory", [p.name for p in resolved], ["a.png", "b.png"])
 
     flagged = _style_references([str(root / "styleframes" / "c.png")], spec_refs, FakeTarget(), take)
-    check("flags beat the scene's list", [p.name for p in flagged], ["c.png"])
+    check("flags beat the spec's list", [p.name for p in flagged], ["c.png"])
 
     # Order is the only thing binding a file to its @image tag, so a reversed
     # list has to come back reversed rather than sorted back into place.

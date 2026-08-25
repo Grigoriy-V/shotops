@@ -207,9 +207,14 @@ def load_target(path):
     Returns `(spec, target)`. This is what the CLI uses; `load` stays for a bare
     file with no hierarchy above it.
     """
-    from . import project
+    from . import assets, project
 
-    merged, target = project.load_spec(path)
+    try:
+        merged, target = project.load_spec(path)
+    except assets.AssetError as exc:
+        # Expansion happens inside load_spec, so its errors arrive without the
+        # context every other spec error carries. Give them the same shape.
+        raise SpecError(f"{Path(path)} -> {exc}") from None
     try:
         return validate(merged), target
     except SpecError as exc:
