@@ -294,6 +294,31 @@ One thing this buys beyond tidiness: with the checkpoint filename no longer
 hard-coded, MiniMax's own bf16 weights become reachable, and the cost of the
 int8 repack becomes measurable instead of assumed.
 
+### Aim it at custom workflows and LoRAs
+
+The user's steer, and it follows from the sampling runs 010 through 012 rather
+than from taste. Since the heavy path is already being paid for — a full
+ComfyUI, its node ecosystem, a 98 GiB model volume — **the replacement should be
+built to exploit that, not merely to tolerate it.** Two capabilities are the
+point of the rebuild:
+
+**Arbitrary graphs, authored in the ComfyUI editor.** Not a fixed reference
+pipeline with holes in it, but whatever graph the shot needs, exported as API
+JSON and templated. That is the difference between a product with a config file
+and a tool that can answer a question nobody anticipated.
+
+**LoRAs as first-class inputs.** The four LoRA runs settled that the pairing
+matters more than the vendor's default suggests: the distillation MiniMax pairs
+with its own reference checkpoint came last, and one distilled from the *other*
+checkpoint came second overall. `CONFIGURED_LORAS` in the checkout is a
+local-only style-LoRA mechanism that this project has never used and that reads
+files from a module the repo does not ship. Loading a LoRA — style or
+step-distillation, from the volume or from a URL — should be an ordinary
+request parameter with a strength, not a deployment-time list.
+
+Both of these are things `parse_config` and the profile catalogue currently
+prevent rather than provide.
+
 ## Cost and licence gates
 
 Do not run H3Zero's `setup`, model download, GPU deploy, smoke test, or an API
