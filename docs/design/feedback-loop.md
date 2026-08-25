@@ -80,6 +80,13 @@ cars. A contact sheet does not show that, because from inside a car there is
 nothing to see. The frustum half of the list above -- is the subject in frame,
 what fraction of frame height, which screen side -- is not built yet.
 
+**And is being held back deliberately.** Three of this shot's four failures were
+framing, which makes the case for building it look overwhelming; that is exactly
+the trap. Designed from the memory of a shot that had no subject, it would come
+out as a check about empty walls and blank sky. A shot that genuinely needs it --
+one with something in frame to keep in frame -- should pull it into existence and
+decide its shape. See [method.md](method.md).
+
 ### 2. Multi-view — for what arithmetic cannot say
 
 Extra views rendered in the same single Blender run, so the cost stays roughly

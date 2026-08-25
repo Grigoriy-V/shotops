@@ -20,6 +20,23 @@ keeping: [`AGENTS.md`](../../AGENTS.md) is the short list of working agreements;
 with what we give it; a shot's `notes.md` is what building that particular shot
 taught. This file is about the geometry itself.
 
+**Everything below came from one shot** — a ten-second continuous camera flying
+fast down a dense static street. That is one point in a large space. The rules
+are not wrong, but none of them has been tested against a second kind of shot,
+and some will turn out to be about *that* shot rather than about blockouts. See
+[method.md](../design/method.md) for which parts of the system are already
+general and which are still n = 1.
+
+## Before anything else
+
+**The scene spec is the deliverable.** Blender and the video model are consumers
+of it. Prefer editing a field to regenerating a scene: a spec that gets rebuilt
+every time it is wrong has no history worth reading.
+
+**Look before believing.** A spec you have not rendered is a guess. `views` is
+cheap and answers the question a single frame cannot — where everything actually
+is, and where the camera actually goes.
+
 ---
 
 ## Scale and units

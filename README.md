@@ -5,6 +5,9 @@ file, Blender renders a grey blockout from it, and a video model turns that
 blockout into the finished shot — so the shot has a diff, a history and a
 revert, the way software does.
 
+*Running it: [docs/usage.md](docs/usage.md). Writing a scene:
+[docs/scene-spec.md](docs/scene-spec.md).*
+
 ## The artifact
 
 | in — Blender blockout | out — Seedance 2 |
@@ -59,10 +62,16 @@ an R&D run, not a house style. They live in the shot as
 ### What the cars settled
 
 The two cars the camera threads at 0.95 m are the hardest thing in the shot, and
-they are what fixed it. Each was one cube; each is now eight primitives — lower
-body, greenhouse set back from centre, raked windscreen, steeper rear screen,
-four wheels on their sides — inside exactly the same footprint. They come back
-as a yellow taxi and a dark saloon, with tail lights and number plates.
+they are what fixed it. Each had been one cube. For this run each was eight
+primitives — lower body, greenhouse set back from centre, raked windscreen,
+steeper rear screen, four wheels on their sides — inside exactly the same
+footprint. They come back as a yellow taxi and a dark saloon, with tail lights
+and number plates.
+
+*The scene has moved on since: the cabin is now a single deformed block, six
+parts instead of eight, so the windscreen rake follows the footprint instead of
+being a stored angle. The pair above is the run that was actually generated, and
+it stays as it was until the next generation replaces both halves.*
 
 **A primitive only has to look like its object at the distance it is seen from.**
 Distance buys inference: a box in a row along a kerb reads as a parked car
@@ -242,493 +251,43 @@ and **there is no automatic fallback.** Degrading to stills would return a
 plausible-looking clip that silently ignores the camera move, which is worse than
 a clear failure. If a gateway will not attach a video reference, the fix is a
 different gateway, not a quieter version of this one. That is exactly how this
-repo ended up on PiAPI; see below.
+repo ended up on PiAPI — the comparison is in
+[usage.md](docs/usage.md#why-the-provider-is-piapi).
 
 `frames` (N stills as `@image1..N`) and `first` stay implemented but
 unexercised, for the day a storyboard-shaped reference is genuinely wanted.
 `render` writes the stills regardless: they cost 8 frames out of 120 and are the
 fastest way to eyeball a blockout without scrubbing video.
 
-## Setup
 
-**Blender 4.5 LTS.** Either install it normally, or unpack the portable build
-into `.tools/` (gitignored) — the pipeline finds it there first, which pins it to
-a known version without touching the system. `AI_RENDER_BLENDER` overrides both.
+## How this gets built
 
-```bash
-curl -L -o blender.zip https://download.blender.org/release/Blender4.5/blender-4.5.12-windows-x64.zip
-```
+Two days old, one shot built. The rule we work by is that **the example comes
+first and the tool is extracted from it** — not the other way round. Every tool
+in here arrived because a shot demanded it: `smooth` easing because a flight
+stopped dead at every keyframe, `audit` because a retiming drove the camera
+through three cars, assets and instances because sixty-four baked objects turned
+a one-line change into sixty-four edits.
 
-LTS on purpose: the `bpy` API is stable across its lifetime, and Workbench is the
-render engine here, so a GPU is optional.
+The cost of that honesty is that **n = 1**, and the repository says so. Some of
+what exists is general and some is the shape of one fast camera in one dense
+street, and [method.md](docs/design/method.md) keeps the two apart in a table
+that is meant to be edited as a second shot proves things.
 
-```bash
-pip install -r requirements.txt
-```
+The core stays small on purpose. Projects and shots will need their own checks
+long before those checks are general, so they get somewhere to live outside the
+core and a way to be promoted into it once a third shot writes the same one —
+[core-and-extensions.md](docs/design/core-and-extensions.md).
 
-Put your [PiAPI key](https://piapi.ai) in `.env` (`PIAPI_KEY`):
+## Where everything is
 
-```bash
-copy .env.example .env
-```
-
-The file is gitignored, so keys stay out of git and out of shell history. Real
-environment variables override it, so a one-off `$env:PIAPI_KEY=...` still works
-without editing the file.
-
-To use the CometAPI provider instead, set `COMETAPI_KEY` and pass
-`--provider comet` — but read the section above first, because it will not
-honour your camera.
-
-### Choosing the model
-
-Defaults to **`seedance-2-mini`**, the iteration tier. Three ways to change it,
-highest precedence first:
-
-```bash
-python -m ai_render generate projects/demo/sequences/seq_010/sh_0020/room.json --model seedance-2
-```
-
-```jsonc
-"generation": { "model": "seedance-2", ... }   // pins a scene to a tier
-```
-
-```bash
-# .env — the baseline for everything
-AI_RENDER_PIAPI_TASK_TYPE=seedance-2-fast
-```
-
-Tiers: `seedance-2-mini` (cheapest) → `seedance-2-fast` → `seedance-2`, plus
-`-less-restriction` variants of each. Only `seedance-2` does 1080p; asking for it
-on another tier fails before the request goes out, not after you have paid.
-
-The value is not validated against a whitelist — PiAPI adds task types faster
-than this repo can track, and rejecting a working one is worse than letting a
-typo reach a clear API error.
-
-The same `.env` needs Supabase Storage credentials for the upload hop —
-`SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (service_role, it needs storage write),
-and `SUPABASE_BUCKET`. Create the bucket first; it can stay **private**, since
-access is via signed URLs.
-
-```bash
-python tools/check_env.py
-```
-
-Reports which credentials are set without ever printing their values.
-
-## Use
-
-```bash
-$env:PYTHONPATH="src"; python -m ai_render all projects/demo/sequences/seq_010/sh_0010/cube.json
-```
-
-| Command | Does |
+| | |
 | --- | --- |
-| `check <scene>` | validate the spec, no rendering, no cost |
-| `audit <scene>` | measure the camera move: speed, stalls, clearance to everything |
-| `render <scene>` | Blender → a new take with `preview.mp4` |
-| `generate <scene>` | blockout → `final.mp4` via the video model |
-| `all <scene>` | both |
-| `takes <scene>` | list takes and their generations |
-| `styleframe <scene>` | restyle a blockout frame into a look reference |
-| `compare <scene>` | contact sheet, blockout vs result at matched times |
-| `views <scene>` | top/front/side/3-quarter of the scene, camera path drawn |
-| `frames <scene>` | individual stills through the shot → `<shot>/frames/` |
-| `sheet <scene>` | keep a take with the shot: blockout to `preview/`, stills to `artifacts/` |
-| `extract <video>` | pull stills from any clip for comparison |
-| `fetch <task-id>` | re-download a finished task without paying again |
-
-### Project, sequence, shot, scene
-
-A scene does not carry its identity; its path does.
-
-```
-projects/nyc/
-  project.json                  <- fps, resolution, aspect: defaults for everything below
-  assets/                       <- reusable parts: a car, a water tower
-  sequences/seq_010/
-    sequence.json
-    sh_0010/
-      shot.json                 <- duration, which scene the shot is, and how it generates
-      brief.md                  <- the authored intent
-      notes.md                  <- what building it taught
-      street_a.json             <- a scene: one way of staging the shot
-      street_b.json             <- another, in parallel
-      preview/                  <- the blockout, one file per version
-      frames/                   <- individual stills, the input to a style frame
-      artifacts/                <- sheets and views, the working record
-```
-
-Each level holds only what differs at that level; a scene inherits the rest.
-Resolution order, most specific wins: scene → shot → sequence → project.
-
-Several scenes in one shot are **parallel variants**, never segments: a shot is
-one of its scenes, never an assembly of them. Point a command at a shot directory
-and it renders the scene `shot.json` selects.
-
-Which is why the **`generation` block belongs in `shot.json`**, not in the scene.
-The prompt, the model and the look references describe the shot being delivered;
-the scenes under it are competing ways to stage that same shot. Put them in one
-scene and the variant beside it is generated differently, so the comparison
-stops being about the staging. A scene may still override a field when the
-variant is specifically a test of that field.
-
-Numbering goes up in tens — `sh_0010`, `sh_0020` — so inserting a shot later is a
-naming problem that is already solved rather than a renumbering that invalidates
-every path in `out/`.
-
-### The preview, and the record of how it got there
-
-`views` and `sheet` write into the shot, not into `out/`. That is a deliberate
-exception to "outputs are derived, so they are disposable": these are not
-outputs, they are the record of how a decision was reached — the view that showed
-the wall was empty, the sheet that proved the camera held. They are small and
-committed. An image that exists only in a chat window is lost to the next
-session.
-
-Three directories, because these are three different kinds of thing — one is the
-deliverable, one is an input to what comes next, and the rest is evidence:
-
-```
-<shot>/preview/    seq_010_sh_0010_street_a_6de41e_preview_v002.mp4
-<shot>/frames/     seq_010_sh_0010_street_a_6de41e_still_v001_t000.png
-                   seq_010_sh_0010_street_a_6de41e_still_v001_t025.png   ...
-<shot>/artifacts/  seq_010_sh_0010_street_a_6de41e_sheet_v004.jpg
-                   seq_010_sh_0010_street_a_70bf8c_views_v001.jpg
-```
-
-`frames` renders stills straight from the spec at full size — evenly spaced, first
-and last always included, so five gives 0, 25, 50, 75 and 100 percent. They are
-named by position rather than by index, because the moment is what matters when
-one of them is picked to become a style frame, and it stays true if the count
-changes. They are not pulled out of the preview: an image model sees whatever it
-is handed, and there is no reason to hand it something that has been through a
-video codec.
-
-### Reading a file name
-
-`<sequence>_<shot>_<scene>_<id>_<kind>_v###`. The project is left out — these live
-inside it already. Everything else is there because it is what goes missing the
-moment a file is downloaded, pasted into a message, or sat next to a file from
-another shot.
-
-The two middle parts answer different questions, which is why both exist.
-
-**The id** is six hex characters of the spec's content, so everything made from
-one state of the scene carries the same one. `6de41e_preview_v002` and
-`6de41e_sheet_v004` are the same render seen two ways; `70bf8c_preview_v001` is
-from a scene that has since been edited. It is a hash rather than a counter on
-purpose: it can be recomputed from the spec by anyone at any time, so "is this
-still current?" is a question you can answer from the files themselves instead of
-from a ledger that can fall out of step.
-
-**The version** counts its own kind and nothing else, so "the fourth sheet" means
-the fourth sheet. It is a high-water mark read off disk, so deleting an old file
-never renumbers a newer one — a version in a committed name has to keep meaning
-what it meant.
-
-### Output layout
-
-One task, one directory. Nothing is ever overwritten.
-
-```
-out/nyc/seq_010/sh_0010/street_a/         <- mirrors the scene's place in the project
-  20260824-153012/                        <- a take: one blockout render
-    scene.json                            <- the exact spec that produced it
-    preview.mp4
-    frames/
-    20260824-153500_seedance-2-mini_480p/ <- one generation from that take
-      run.json                            <- provider, model, params, timings
-      final.mp4
-      final_frames/
-```
-
-Generations nest under the take they came from, because that is the question
-you ask later: which blockout is this shot from, and what else did I try against
-it? `generate` uses the newest take unless you pass `--take 20260824-153012`.
-
-A failed generation still writes its `run.json`, with the error — it is the
-reason the next attempt is different.
-
-### Comparing a result against the blockout
-
-```bash
-python -m ai_render generate projects/demo/sequences/seq_010/sh_0020/room.json --resolution 480p --extract
-```
-
-`--extract` pulls 8 stills from the result into `final_frames/`, matching the 8
-in the take's `frames/`. **Compare identical indices** — `frames/frame_03_.png`
-against `final_frames/frame_03_.png`. Comparing different time points reads as
-adherence when there is none; that mistake has already been made once here.
-
-Run `check` before `render` and `render` before `generate` — each stage is free
-until the last one, so failures should surface as early as possible.
-
-### Measuring a move before rendering it
-
-```bash
-python -m ai_render audit projects/nyc/sequences/seq_010/sh_0010/street_a.json
-```
-
-```
-speed     max 30.2 m/s at t=3.58  (109 km/h), mean 15.0 m/s
-stalls    none -- the move never stops and restarts
-clearance closest 4 of 104 objects:
-            0.95 m  car_03_body          t=1.62
-            0.95 m  car_06_body          t=2.88
-```
-
-No Blender, no pixels, no cost. It bakes the path from the same interpolation
-the render uses — a check that evaluated a different curve would be checking a
-different shot — and exits non-zero if the camera ends up inside anything, so it
-can gate a render rather than merely inform one.
-
-It exists because of an escape. Retiming a move slides the path against dressing
-that did not move with it, and a clearance that held before the change did not
-hold after: the camera flew through three parked cars, and eight frames of grey
-contact sheet showed nothing, because from inside a car there is nothing to see.
-Speed and stalls come along for free once the path is baked — a chain of eased
-keyframes stops dead at every one of them, which is obvious in a number and easy
-to miss in a video.
-
-```bash
-python tests/test_core.py
-```
-
-Tests cover spec validation and the baking math; they stub out `bpy`, so they run
-without Blender installed.
-
-## Scene spec
-
-```jsonc
-{
-  "fps": 24,
-  "duration": 5.0,              // seconds
-  "resolution": [960, 540],     // blockout only; final resolution is in `generation`
-
-  "objects": [
-    {
-      "name": "hero",
-      "type": "cube",           // cube | plane | sphere | cylinder | cone | torus
-      "size": 2.0,
-      "location": [0, 0, 1.0],  // metres, Z-up
-      "rotation": [0, 0, 0],    // degrees, XYZ
-      "animation": {
-        "rotation": [
-          { "t": 0.0, "value": [0, 0, 0], "ease": "ease" },
-          { "t": 5.0, "value": [0, 0, 120] }
-        ]
-      }
-    }
-  ],
-
-  "camera": {
-    "lens": 35.0,               // mm, on a 36mm sensor
-    "location": [9, -9, 5],
-    "look_at": [0, 0, 1.0],     // aim point, not a rotation — far easier to author
-    "animation": { "location": [ ... ], "look_at": [ ... ] }
-  },
-
-  // `generation` is shown here because it is what a merged spec looks like.
-  // Author it in shot.json -- see above.
-  "generation": {
-    "prompt": "A polished dark-granite monolith rotating in a brutalist hall...",
-    // ...or "full_prompt", sent byte for byte with no contract prepended
-    "reference_mode": "video",  // video | frames | first
-    "duration": 5,              // 4-30
-    "resolution": "720p",       // 480p | 720p; 1080p on seedance-2 only
-    "aspect_ratio": "16:9",
-    "model": "seedance-2-fast",
-    "style_references": [       // look references, in tag order: @image1, @image2 ...
-      "styleframes/lookref_a.png",
-      "styleframes/lookref_b.png"
-    ]
-  }
-}
-```
-
-Animatable channels: `location`, `rotation`, `scale`, plus `look_at`, `lens`,
-`roll`, `pan` and `tilt` on the camera.
-
-### Assets and instances
-
-Repeated geometry goes in `projects/<proj>/assets/<name>.json` and is placed by
-an `instances` list:
-
-```jsonc
-"instances": [
-  { "asset": "sedan", "name": "car_01", "location": [5.9, -104, 0], "size": [1.9, 4.6, 1.5] },
-  { "asset": "sedan", "name": "car_06", "location": [-1.7, -52, 0], "size": [2.1, 5.6, 1.8],
-    "rotation": [0, 0, 180] }
-]
-```
-
-An asset declares its parts **in the unit space of its own bounding box**: `x`
-and `y` as fractions of width and length from the centre, `z` as a fraction of
-height up from the ground, `scale` as fractions of all three. Radii and depths
-are fractions too — `size` follows height and `depth` follows width, which is
-what a wheel wants. The instance supplies the footprint, so a saloon and a van
-come out of one recipe at their own proportions.
-
-This is what "version the recipe, not the result" means in practice. Eight cars
-of eight primitives went into the NYC shot as **64 objects with the rule thrown
-away**; changing the windscreen rake meant editing 64 blocks. They are now eight
-lines and one asset file, and the rake is one number in one place.
-
-`rotation` on an instance is a turn about Z and nothing else. That is a real
-constraint, not an omission: a yaw folds exactly into each part's own XYZ euler,
-where a general rotation would need composing, and a wrong composition is
-invisible in a grey render and obvious in the result.
-
-A part can also be a **`mesh`**, with `vertices` and `faces` placed by hand in
-the same unit space. That is how a shape that must change with the footprint
-gets built: a windscreen raked 34.8° on a 4.6 m car should be 34.4° on a 5.6 m
-one, because the rake is rise over run — a stored angle on a rotated box cannot
-know that, and vertices get it for free.
-
-`assets/sedan.json` and `assets/sedan_solid.json` are the same car built both
-ways, and `assets/car_compare.json` renders them side by side at three
-footprints. Six parts instead of eight, no panels overlapping a roof box, and
-the rake correct at every size.
-
-Expansion happens once, when the spec is loaded, so Blender, `audit` and `check`
-all measure the same geometry — and `scene_id` hashes the expansion, because
-editing an asset changes the shot and an id that ignored it would call two
-different shots the same one.
-
-`look_at` aims the camera; the three angles rotate it about its own axes
-afterwards, in degrees. `roll` banks it — without that a flight reads as a drone
-holding the horizon level. `pan` and `tilt` swing the aim off the target, which
-is how a subject gets to sit anywhere but dead centre. All three default to 0,
-so a scene that omits them renders exactly as before.
-
-Easing is set per keyframe and governs the segment *starting* at that key:
-`ease` (smoothstep, the default), `linear`, `in`, `out`, `smooth`.
-
-`smooth` is the one to reach for on a move that should not stop. The other four
-shape one segment in isolation and know nothing about their neighbours — `ease`
-in particular has zero velocity at *both* ends, so a run of eased keys arrives
-and halts at every one of them, and `linear` turns a corner at each key instead
-of curving through it. `smooth` takes its tangent at a key from the keys either
-side, so velocity carries through: continuous speed, a curved path, and speed
-still steered by how far apart the keys are. With only two keys it is exactly
-linear.
-
-**Write the prompt about materials and light, not about layout.** The provider
-prepends the reference contract itself. Everything spatial — blocking, framing,
-camera path — comes from the blockout; the prompt's job is only to say what the
-surfaces are made of and how they are lit.
-
-`style_references` are paths relative to the shot directory, and **order is
-meaning**: the first becomes `@image1`. When any are present the contract adds
-the sentence that decides the shot — *appearance is determined solely by the
-images* — and tells the model to take no framing from them. Repeated `--style`
-flags override the list for one run without editing the scene, and a
-`styleframe.png` sitting in the take is the last resort.
-
-**`full_prompt` opts out of all of that.** It is sent byte for byte, contract
-included, and it exists because an assembled prompt is worth less than a tested
-one. The NYC shot's prompt was written by hand, run, and judged good; rebuilding
-a near-miss of it every time would swap a tested string for an untested one. Use
-`prompt` while a look is still being found, and move to `full_prompt` once a
-particular wording is the reason a take works.
-
-`check` guards the one thing a verbatim prompt can get wrong on its own: naming
-`Image 3` when only two references will be attached. That fails before anything
-is uploaded.
-
-### Why the provider is PiAPI
-
-**`mode: "omni_reference"`.** That single field is the difference between a clip
-that follows your camera and a clip that merely looks good. PiAPI exposes
-`text_to_video | first_last_frames | omni_reference`, and only the last one
-attaches mixed-media references to the generation.
-
-CometAPI's Seedance route has no such switch. It accepts `video_urls`, returns
-`200`, produces a polished result — and the result owes nothing to the blockout.
-Two live runs confirmed it by frame-for-frame comparison against the same
-blockout; the same blockout through PiAPI's `omni_reference` held camera
-trajectory, blocking and shot scale exactly.
-
-Things that looked like the cause and were not:
-
-- **The tag syntax.** `@video1`, `[Video 1]` and plain `Video 1` all bind fine
-  once the reference is genuinely attached. The tag is positional — it points at
-  an entry in `video_urls`, not at a name in the scene spec — so with no
-  attachment there is nothing for any spelling of it to point at.
-- **Blockout quality.** Worth improving on its own merits (see `demo_room.json`,
-  which encloses the space and separates surfaces by value), but it was never
-  what stood between us and structure control.
-
-### The reference contract
-
-Two things in `build_reference_prompt` earned their place:
-
-1. **The kept properties are enumerated.** ByteDance's white-model template names
-   eight — camera motion, duration, composition, shot scale, spatial
-   relationships, object positions, model structure, motion trajectory. "Use it
-   for camera and framing" is too vague to bind.
-2. **The blockout's own look is excluded explicitly.** Otherwise flat grey reads
-   as art direction rather than as scaffolding.
-
-### Style frames
-
-The reference contract tells the model to ignore the blockout's lighting and
-colour — which leaves those properties owned by nobody, so the model picks them
-itself. A **style still** (`@image1`) takes them back: it owns material,
-lighting, colour and mood, while the blockout keeps everything spatial.
-
-The still must agree with the blockout, or the two references pull against each
-other. So it is made by **restyling the blockout's own frame**, not by generating
-a picture from text:
-
-```bash
-python -m ai_render styleframe projects/demo/sequences/seq_010/sh_0020/room.json
-```
-
-That sends `frames/frame_01_.png` to GPT Image 2's edit endpoint with an
-instruction to change surfaces and light only — same camera, same framing, same
-object positions — and writes `<take>/styleframe.png`. `generate` picks it up
-automatically from then on; `--style <path>` overrides, and several generations
-can share one still rather than paying for it each time.
-
-`--frame N` restyles a different still, `--source <path>` restyles any image.
-`--text` switches to pure text-to-image — useful for exploring a look before a
-blockout exists, but it invents its own composition, so it should not be fed to
-a shot.
-
-Two API details worth knowing: `input_fidelity` must **not** be sent to
-`gpt-image-2` (it always runs at high fidelity and rejects the parameter), and
-`size` defaults to `auto` here so the edit keeps the frame's proportions.
-
-**A style still is one way to do this, and not the one that has worked best.**
-The two runs that fixed the NYC shot used no style still at all: three unrelated
-look references, which is what `generation.style_references` is for. A still made
-by restyling the blockout is made *before* the dressing is settled, and then
-disagrees with it — which is how two cars got dropped. References that carry only
-palette and render style have nothing to disagree with.
-
-The command is still worth having when a shot genuinely needs its own frame.
-Both routes end up in the same list: `styleframe.png` in the take is simply the
-last place `generate` looks.
-
-## Cost
-
-PiAPI bills **input + output** duration, so a 5s blockout under a 5s shot is
-charged as 10s. Iterate on `seedance-2-mini` at `480p`, and only move up once the
-camera move is right.
-
-Billing is linear in that total, which makes a **trimmed blockout the cheapest
-probe there is**: four seconds of a ten-second shot costs 40% of the full run,
-and dressing usually fails in the first seconds, where the camera is closest to
-things. `ffmpeg -t 4 -c copy` cuts one without re-encoding.
-
-Every stage before `generate` is free, which is why `check`, `render`, `extract`
-and `compare` are separate commands — get the blockout right locally, then pay
-once. Blender rendering is local and costs nothing.
-
-The render engine is Workbench, not Cycles or EEVEE. That is not a compromise:
-the blockout is meant to be flat, untextured grey, because that is what the video
-model reads structure from best. A pretty preview would cost time *and* make
-results worse — and it means a GPU is optional.
+| [docs/usage.md](docs/usage.md) | Setup, the commands, output layout, cost |
+| [docs/scene-spec.md](docs/scene-spec.md) | The spec format, field by field |
+| [docs/craft/modelling.md](docs/craft/modelling.md) | How to build geometry a video model can read, with the experiment behind each rule |
+| [docs/design/](docs/design/) | Decisions and their reasoning — structure, method, extensions, the feedback loop |
+| [docs/research/](docs/research/) | The survey: prior art, which models honour a blockout, blocking craft |
+| [AGENTS.md](AGENTS.md) | Working agreements for anyone, human or agent, changing this repo |
+| `projects/<proj>/.../<shot>/notes.md` | What building that particular shot taught |
+| `projects/<proj>/.../<shot>/generations.md` | One entry per paid run: setup, cost, what held, what broke |

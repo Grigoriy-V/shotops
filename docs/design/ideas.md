@@ -36,6 +36,14 @@ and passes; VRAM tier and therefore cost per run.
 
 ## 2 — Scenes built from ready-made assets
 
+*Partly overtaken, 2026-08-25.* The spec now has `assets` and `instances`, but
+they are the **recipe** half: a part list in the unit space of a bounding box,
+written by hand, expanded at load. That answers "geometry should be reusable and
+diffable". It does not touch what this idea is actually about — pulling in
+geometry that somebody else made, from a library or a `.blend` or a download,
+and pinning it reproducibly. See [scene-spec.md](../scene-spec.md) for what
+exists.
+
 Let the spec reference real assets — a library object, a `.blend` link, a
 downloaded model — instead of only primitives.
 

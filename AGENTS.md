@@ -78,77 +78,55 @@ A shot is a directory: `projects/<project>/sequences/<seq>/<shot>/`, holding its
 `projects/<project>/assets/`. A scene's identity is its path, never a field
 inside it. See [docs/design/pipeline-structure.md](docs/design/pipeline-structure.md).
 
-## Scene authoring
+A project may add its own checks without touching the core — designed, not built:
+[docs/design/core-and-extensions.md](docs/design/core-and-extensions.md).
 
-The scene spec is the deliverable; Blender and the video model are consumers of
-it. Prefer editing a field over regenerating a scene.
+## Every change ships with its check
 
-**Work in real units.** Metric, Z-up, objects at their true size. Speed, lens and
-framing then follow from the numbers instead of being guessed. Scale errors are
-invisible in a grey blockout and obvious in the result.
+Mathematical where the change is measurable, visual where it is not, both where
+they disagree — and a fix if either fails. Not "I will check it later" and not
+"the diff looks right": a change to geometry gets `audit`, a change to framing
+gets a render you actually look at.
 
-**Author the camera first, then dress the scene.** The move is the shot; the
-geometry exists to make the move legible. Render once the camera exists and
-before the dressing, because that render is what tells you what the dressing is
-for.
+The tooling exists to make that cheap, never to replace it. And when a check
+cannot be expressed with what exists, say so in the commit and in the shot's
+`notes.md` rather than letting it pass silently — an unmeasurable risk that
+nobody wrote down is the one that reaches a paid generation.
 
-**Never let the camera pass through geometry.** Close is the point; penetration
-is a mistake. Retiming a move slides it against fixed dressing, so a path that
-was clear before a timing change is not clear after one. Run `audit` — it is
-free, it measures the baked path rather than the keys, and it exits non-zero
-when the camera is inside something. Eyes on a contact sheet cannot do this: a
-camera inside a car renders as nothing at all.
-
-**A continuous move uses `smooth` easing.** The other modes shape one segment at
-a time and stop at every key; a flight authored with `ease` arrives, halts and
-sets off again at each one. Read the values you are writing as a curve, not as a
-list of positions.
-
-**Detail what the camera gets close to, and only that.** A primitive has to look
-like its object at the distance it is seen from, no further. Distance buys
-inference — a box in a row along a kerb reads as a parked car because the street
-says so. Proximity spends it: the same box at a metre, filling frame, comes back
-from the model as a box.
-
-**Anything built from a rule goes in an asset, not in the scene.** If eight
-objects came out of one idea about a footprint, the scene gets an `instances`
-entry and `projects/<proj>/assets/` gets the rule. Baking it out and pasting the
-result is how a spec stops being a recipe and becomes a build artefact — and
-then a one-line change is sixty-four hand edits. Author in the unit space of the
-asset's own bounding box so one recipe covers every size it is used at.
-
-**Look before believing.** A spec you have not rendered is a guess. `views` is
-cheap and answers the question a frame cannot — where everything is, and where
-the camera actually goes.
+## Nothing that worked may live outside the repository
 
 **A run that only exists in a flag is a run nobody can repeat.** Model, prompt
 and `style_references` go in `shot.json`'s `generation` block. Flags are for
 probing without editing anything; the moment a configuration is the right one,
-it goes in the file. This is the whole premise — a shot whose best version lives
-in a chat log is not source-controlled, whatever the repository says.
-
-**`generation` belongs to the shot, not to the scene.** The prompt and the look
-references describe what is being delivered; the scenes under a shot are
-competing ways to stage that same thing, and they have to be generated
-identically or the comparison is worthless. A scene overrides a generation field
-only when that field is what the variant is testing.
+it goes in the file. A shot whose best version lives in a chat log is not
+source-controlled, whatever the repository says.
 
 **Do not rewrite a prompt that has been run and judged good.** `full_prompt`
 sends the scene's text byte for byte with nothing prepended, and that is the
 right field for a wording someone tested. Improving it into a near-miss trades a
-known result for an unknown one. `prompt` — the look half, with the contract
-generated — is for looks still being searched for.
+known result for an unknown one. `prompt` — the look half, with the reference
+contract generated — is for looks still being searched for.
 
-The rules above are the short list — the ones that change what you are allowed
-to do. **The long list is [docs/craft/modelling.md](docs/craft/modelling.md):**
-how to build geometry for a blockout, with the experiment behind each rule.
-Read it before authoring a scene, and add to it when something costs you a
-lesson. A rule earns its place there by linking to the evidence.
+## Read before you author
+
+These agreements are process: what you are allowed to do and what you must never
+do. **They do not tell you how to build a shot.** Three files do, and the
+boundary between them is worth keeping:
+
+| | |
+| --- | --- |
+| [docs/craft/modelling.md](docs/craft/modelling.md) | How to build geometry a video model can read — units, detail budget, silhouette, colour, assets, clearance, easing. Every rule linked to the experiment that produced it. **Read this before authoring a scene.** |
+| [docs/scene-spec.md](docs/scene-spec.md) | The spec format itself, field by field |
+| [docs/design/method.md](docs/design/method.md) | How we decide what to build next, and which tools are still n = 1 |
+
+When something costs you a lesson, write it into `modelling.md` **with a link to
+the evidence** — a rule with no incident behind it is an opinion, and opinions in
+a rules file are how a rules file stops being read.
 
 Findings about the *video model* — what it holds, where it drifts, what a
-blockout has to supply — go in [docs/research/craft.md](docs/research/craft.md);
-what a particular shot taught goes in that shot's `notes.md`, next to the spec
-that proved it.
+blockout has to supply — go in [docs/research/craft.md](docs/research/craft.md).
+What a particular shot taught goes in that shot's `notes.md`, next to the spec
+that proved it. What a paid run did goes in its `generations.md`.
 
 ## Keep the working record in the shot
 

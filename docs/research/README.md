@@ -10,7 +10,11 @@ liability.
 | [blocking-to-video.md](blocking-to-video.md) | Which models take a blockout as structural reference, and how people actually feed it |
 | [agentic-blender.md](agentic-blender.md) | Spec vs MCP vs raw `bpy` — what each is genuinely for |
 | [skills-and-mcp.md](skills-and-mcp.md) | What already exists as skills and MCP servers across our three strands |
-| [craft.md](craft.md) | Blocking and camera craft, and which half of it belongs in the prompt |
+| [craft.md](craft.md) | Blocking and camera craft, which half of it belongs in the prompt, and what our own paid runs have shown about references |
+
+Everything here is about the ground and about the model. **What to do with the
+geometry is not here** — that is [craft/modelling.md](../craft/modelling.md),
+and it is the file to read before authoring a scene.
 
 **Confidence marking.** Sources are uneven: GitHub repos and arXiv papers are
 checkable, vendor blogs and SEO comparison sites are not. Anything resting on the

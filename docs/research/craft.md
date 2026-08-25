@@ -79,22 +79,16 @@ a documented convention rather than a habit.
 *High confidence — these come from generations on this repo's own shots, not from
 the survey. Full accounts live next to the specs that produced them.*
 
-- **A primitive only has to look like its object at the distance it is seen
-  from.** Distance buys inference: a box in a row along a kerb reads as a parked
-  car because the street says so. Proximity spends it — the same box at under a
-  metre, filling frame, comes back as a box. Detail belongs where the camera
-  goes close, and nowhere else.
+These are about the **references and the model**. What they imply for the
+geometry — how much detail, where, and what colour is for — is stated as rules
+in [craft/modelling.md](../craft/modelling.md), which is the file to read before
+authoring a scene.
+
 - **Every reference must agree about what is in frame.** A blockout saying
   *objects are standing here* against a style still saying *the road is empty*
   gets resolved by dropping the objects. This is the failure mode of restyling
   the blockout's own frame: the still is made before the dressing is trusted,
   and then contradicts it.
-- **Colour in the blockout is a marker, not a specification.** It says *there is
-  one object here and this is where it ends*, so the prompt has something to
-  point at. What the object is finally painted comes from the look reference.
-  Cars authored red came back as a yellow taxi and a dark saloon, and the run
-  that did *not* release the model from the marker painted the whole frame in
-  that hue instead.
 - **Say which reference owns appearance.** "The video is a guide for movement
   and composition only; appearance comes solely from the images" is the line
   that separated the two. Without it the model treats the blockout as art
