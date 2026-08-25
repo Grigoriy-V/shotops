@@ -131,6 +131,7 @@ class VideoProvider:
         generation: dict,
         out_path: Path,
         style_images: list[Path] | None = None,
+        on_task=None,
     ) -> Path:
         """Turn a grey blockout clip into the finished shot.
 
@@ -138,6 +139,13 @@ class VideoProvider:
         order they should be tagged. Providers that cannot attach them must say
         so rather than silently dropping them -- a shot that quietly ignores
         your art direction is worse than one that refuses.
+
+        `on_task` is called with the provider's task id the moment it exists and
+        **before polling begins**. That ordering is the whole point: from then
+        on the run is the provider's to finish, and the id is the only handle on
+        it. Written after the fact it would be lost to exactly the cases that
+        need it -- a killed process, a dropped connection, a download that fails
+        on an already-paid generation.
         """
         raise NotImplementedError
 

@@ -746,6 +746,11 @@ import inspect  # noqa: E402
 for provider_name in ("piapi", "comet"):
     params = inspect.signature(get_provider(provider_name).generate).parameters
     check(f"{provider_name} accepts style_images", "style_images" in params, True)
+    # The CLI hands over a callback that writes the task id into the manifest
+    # before polling starts. A provider missing it is a TypeError after the
+    # blockout has been uploaded; a provider that accepts it and never calls it
+    # loses the only handle on a paid generation.
+    check(f"{provider_name} accepts on_task", "on_task" in params, True)
 
 try:
     get_provider("comet").generate(
@@ -770,6 +775,105 @@ for label, gen in [
     except Exception as exc:  # must fail on validation, before any network call
         failures.append(f"piapi {label}: wrong error {type(exc).__name__}: {exc}")
         print(f"  FAIL piapi {label} raised {type(exc).__name__}")
+
+print("piapi -- a failed task reports the reason, not the category")
+from ai_render.providers.piapi import _distinct  # noqa: E402
+
+
+class _Reply:
+    status_code = 200
+
+    def __init__(self, payload):
+        self.payload = payload
+
+    def json(self):
+        return self.payload
+
+
+class _PollSession:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def get(self, url, timeout=None):
+        return _Reply(self.payload)
+
+
+# Taken verbatim from task a0d1ee95, which was rejected: the category the API
+# returns is unactionable, the sentence that says what to change is in the logs,
+# and the task's internal retry repeats it.
+rejected = {
+    "data": {
+        "status": "failed",
+        "error": {"message": "Your content violated community guidelines."},
+        "logs": [
+            "audio: enabled=false",
+            "The request was rejected due to copyright restrictions. Please try different inputs.",
+            "Attempt 1 failed (content restriction), retrying.",
+            "The request was rejected due to copyright restrictions. Please try different inputs.",
+        ],
+    }
+}
+try:
+    PiapiSeedance(poll_interval=0.0)._poll(_PollSession(rejected), "task-1")
+    failures.append("piapi failed task: expected RuntimeError")
+    print("  FAIL a failed task raises")
+except RuntimeError as exc:
+    check("keeps the vendor's category", "community guidelines" in str(exc), True)
+    check("carries the actual reason", "copyright restrictions" in str(exc), True)
+    check("collapses the internal retry", str(exc).count("copyright restrictions") == 1, True)
+
+check("_distinct keeps first-seen order", _distinct(["b", "a", "b", " a "]), ["b", "a"])
+check("_distinct drops blanks", _distinct(["", "   ", "x"]), ["x"])
+
+print("piapi -- the task id reaches the caller before polling")
+import ai_render.providers.piapi as piapi_mod  # noqa: E402
+import ai_render.upload as upload_mod  # noqa: E402
+
+
+class _Uploader:
+    def upload(self, path):
+        return f"https://example/{Path(path).name}", lambda: None
+
+
+class _Created:
+    status_code = 200
+
+    @staticmethod
+    def json():
+        return {"data": {"task_id": "task-42"}}
+
+
+class _PostSession:
+    def post(self, url, json=None, timeout=None):
+        return _Created()
+
+
+order = []
+saved_session = piapi_mod.PiapiSeedance.__dict__["_session"]
+saved_poll = piapi_mod.PiapiSeedance.__dict__["_poll"]
+saved_download = piapi_mod.download
+saved_uploader = upload_mod.get_uploader
+try:
+    piapi_mod.PiapiSeedance._session = staticmethod(lambda: _PostSession())
+    piapi_mod.PiapiSeedance._poll = lambda self, session, task_id, first_delay=None: (
+        order.append(f"poll:{task_id}") or "https://example/final.mp4"
+    )
+    piapi_mod.download = lambda url, out_path: (Path(out_path).write_bytes(b"0"), Path(out_path))[1]
+    upload_mod.get_uploader = lambda: _Uploader()
+    with _tempfile.TemporaryDirectory() as tmp:
+        piapi_mod.PiapiSeedance(task_type="seedance-2-fast").generate(
+            Path("blockout.mp4"),
+            {"prompt": "a street at dusk", "duration": 4},
+            Path(tmp) / "final.mp4",
+            on_task=lambda task_id: order.append(f"id:{task_id}"),
+        )
+finally:
+    piapi_mod.PiapiSeedance._session = saved_session
+    piapi_mod.PiapiSeedance._poll = saved_poll
+    piapi_mod.download = saved_download
+    upload_mod.get_uploader = saved_uploader
+
+check("on_task fires, and before the poll", order, ["id:task-42", "poll:task-42"])
 
 print("upload -- content type follows the file, not the assumption")
 from ai_render.upload import content_type_for  # noqa: E402

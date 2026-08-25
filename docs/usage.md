@@ -194,7 +194,7 @@ out/nyc/seq_010/sh_0010/street_a/         <- mirrors the scene's place in the pr
     preview.mp4
     frames/
     20260824-153500_seedance-2-mini_480p/ <- one generation from that take
-      run.json                            <- provider, model, params, timings
+      run.json                            <- provider, model, params, timings, task id
       final.mp4
       final_frames/
 ```
@@ -204,7 +204,13 @@ you ask later: which blockout is this shot from, and what else did I try against
 it? `generate` uses the newest take unless you pass `--take 20260824-153012`.
 
 A failed generation still writes its `run.json`, with the error — it is the
-reason the next attempt is different.
+reason the next attempt is different. The provider's `task_id` lands there the
+moment the task exists, before any polling: that is what `fetch` needs to
+recover a generation you have already paid for, and what lets a failure be
+looked up on the provider a week later. Where a provider returns a category
+("your content violated community guidelines") and puts the actual cause in the
+task log ("rejected due to copyright restrictions"), both are kept — the
+category alone cannot be acted on.
 
 ### Comparing a result against the blockout
 

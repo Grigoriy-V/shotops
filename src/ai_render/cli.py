@@ -295,7 +295,18 @@ def cmd_generate(args):
     print(f"[generate] {_rel(out_dir)}")
 
     try:
-        provider.generate(preview, generation, out_dir / "final.mp4", style_images=style_images)
+        provider.generate(
+            preview,
+            generation,
+            out_dir / "final.mp4",
+            style_images=style_images,
+            # Written the moment the task exists, not when it finishes: after
+            # this point the run is the provider's, and the id is the only way
+            # back to it. `fetch` recovers a paid generation with it; without
+            # it, a run that dies mid-poll is unrecoverable and a failure a
+            # week old cannot be looked up at all.
+            on_task=lambda task_id: runs.write_manifest(out_dir, task_id=task_id),
+        )
     except Exception as exc:
         # A failed attempt is still a record worth keeping -- it is the reason
         # the next attempt is different.

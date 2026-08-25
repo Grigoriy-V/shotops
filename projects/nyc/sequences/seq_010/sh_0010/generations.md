@@ -313,3 +313,89 @@ on the prompt at all is an open question about `scene_id`, not about this shot.
    appearance.
 7. **A stronger model.** **Not started.** 003 ran on `fast`; the ceiling above
    it is untested, and the flicker is the first thing that would test it.
+
+---
+
+## 004 — 2026-08-25, the first run through the CLI, rejected
+
+The point of this one was not the shot. 002 and 003 were run by hand in the
+playground; `shot.json` had since been made to describe them, and nothing had
+ever sent it. **A config that has never been sent is a claim, not a
+reproduction.**
+
+### Setup
+
+| | |
+| --- | --- |
+| Task | `a0d1ee95-acfe-40ac-ada9-c37439ff880e` |
+| Model | `seedance-2-fast`, 480p, 16:9, 10 s — merged from `project.json` and `shot.json`, not typed anywhere |
+| `@video1` | the take's own `preview.mp4` — the solid-car blockout, `e64594` |
+| `@image1..3` | `styleframes/lookref_a/b/c.png`, resolved from the shot directory |
+| Result | **none.** `status: failed`, `code 10003` |
+| Cost | **nothing.** `consume: 0`, `frozen: 0`, `restored frozen points` |
+
+### Rejected on copyright, not on anything we built
+
+```
+error:  Your content violated community guidelines.
+logs:   The request was rejected due to copyright restrictions.
+        Attempt 1 failed (content restriction), retrying.
+        The request was rejected due to copyright restrictions.
+```
+
+The three look references are frames from a released animated feature. The same
+three files went through the playground twice, in 002 and 003, and were accepted
+both times; through the API they were refused three times in a row. Why the two
+routes disagree is not known, and guessing would be worse than saying so.
+
+What it settles is not in doubt: **the best result in this project rests on
+references it has no right to.** `generations.md` already carried that as a
+caveat under 003 — *fine as a look probe, not a house style*. It is now a hard
+constraint. The `-less-restriction` task variants exist and are the wrong
+instrument here: the block is a correct copyright decision, not a false
+positive.
+
+### What the run did prove
+
+Everything up to the model, which was the whole reason to run it:
+
+- **The blockout is deterministic.** A fresh `render` of the current spec
+  produced `scene_id e64594` — the id the committed `preview_v004` already
+  carried — and `ffmpeg -f framemd5` matched the two videos frame for frame.
+  Only the container hash differs, on metadata.
+- **Inheritance resolves the way the docs say.** `resolution: 480p` and
+  `aspect_ratio: 16:9` came from `project.json`, `model` and `duration` from
+  `shot.json`, and the three references from paths relative to the shot
+  directory. `run.json` recorded the merge, so this is checkable, not asserted.
+- **The prompt went out verbatim**, and `check` said so before anything was
+  uploaded.
+- **The upload cleaned up after itself.** All four files — blockout and three
+  references — were removed from storage on the failure path, not just on
+  success.
+
+### Two bugs it found, both fixed
+
+The failure was the useful part, because it exercised the paths a successful run
+never touches.
+
+**`run.json` did not record the task id.** It had to be read out of stdout. That
+breaks the one guarantee that matters when money is involved: `fetch` recovers a
+generation the download lost, and it needs the id. The id is now written by an
+`on_task` callback **before polling starts** — the moment after which the run
+belongs to the provider.
+
+**The manifest kept the category and dropped the cause.** `error` read *"Your
+content violated community guidelines"*, which names nothing to change; the
+sentence that does — *"rejected due to copyright restrictions"* — was in the
+task's `logs`, which the poller printed only on success. Both are now printed
+and both go into the exception, so both reach the manifest. Repeated lines from
+the provider's internal retry collapse to one.
+
+Both are covered by tests built from this task's own response.
+
+### What is open
+
+The look references. 004 cannot be repeated as written, and neither can 003.
+`styleframes/v002.png` — our own generation, and the only reference that depicts
+*this* street — is still unused, but the prompt names three images and there is
+one. That is a look decision, not a code one.

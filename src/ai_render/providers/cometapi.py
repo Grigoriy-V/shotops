@@ -106,7 +106,7 @@ class CometSeedance(VideoProvider):
 
     # ------------------------------------------------------------------ main
 
-    def generate(self, reference_video, generation, out_path, style_images=None):
+    def generate(self, reference_video, generation, out_path, style_images=None, on_task=None):
         import requests
 
         if style_images:
@@ -148,6 +148,8 @@ class CometSeedance(VideoProvider):
                     timeout=180,
                 )
                 task = self._start(response, mode)
+                if on_task:
+                    on_task(task)
                 video_url = self._poll(session, task)
             finally:
                 cleanup()
@@ -168,7 +170,10 @@ class CometSeedance(VideoProvider):
             for handle in handles:
                 handle.close()
 
-        url = self._poll(session, self._start(response, mode))
+        task = self._start(response, mode)
+        if on_task:
+            on_task(task)
+        url = self._poll(session, task)
         out = download(url, out_path)
         print(f"[generate] ok -- {out} ({out.stat().st_size / 1e6:.1f} MB)")
         return out

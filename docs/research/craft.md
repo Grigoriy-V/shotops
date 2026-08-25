@@ -97,6 +97,12 @@ authoring a scene.
   carrying only palette and render style work, and they cannot contradict the
   blockout about staging, because they are not describing that street. This is
   the cheaper and more robust arrangement than a style still per shot.
+- **A look reference you do not own may be refused at the gate.** Three frames
+  from a released feature passed twice through the provider's playground and
+  were then rejected three times through its API, on copyright. Whatever
+  explains the difference, the consequence is fixed: a reference the pipeline
+  cannot legally send is a reference the shot cannot depend on, however well it
+  worked.
 - **Trim the blockout before probing.** Billing is linear in input + output
   duration, so a four-second cut of a ten-second shot costs 40% of the run. Most
   dressing failures happen in the first seconds, where the camera is closest.

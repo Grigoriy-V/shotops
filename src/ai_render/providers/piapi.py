@@ -50,6 +50,17 @@ TERMINAL_OK = {"completed", "success", "succeeded"}
 TERMINAL_BAD = {"failed", "error", "cancelled", "staged"}
 
 
+def _distinct(lines):
+    """Log lines in order, without repeats. A task that retries internally says
+    the same thing three times, and three copies of one reason is noise."""
+    kept = []
+    for line in lines:
+        text = str(line).strip()
+        if text and text not in kept:
+            kept.append(text)
+    return kept
+
+
 class PiapiSeedance(VideoProvider):
     name = "piapi/seedance"
 
@@ -78,7 +89,7 @@ class PiapiSeedance(VideoProvider):
         session.headers.update({"X-API-Key": key, "Content-Type": "application/json"})
         return session
 
-    def generate(self, reference_video, generation, out_path, style_images=None):
+    def generate(self, reference_video, generation, out_path, style_images=None, on_task=None):
         mode = generation.get("reference_mode", "video")
         if mode != "video":
             raise ValueError(
@@ -155,6 +166,8 @@ class PiapiSeedance(VideoProvider):
             task_id = data.get("task_id") or data.get("id")
             if not task_id:
                 raise RuntimeError(f"no task id in response: {body!r}")
+            if on_task:
+                on_task(task_id)
 
             video_url = self._poll(session, task_id)
         finally:
@@ -199,12 +212,23 @@ class PiapiSeedance(VideoProvider):
                 url = (data.get("output") or {}).get("video")
                 if not url:
                     raise RuntimeError(f"task completed but no video url: {data!r}")
-                for line in data.get("logs") or []:
+                for line in _distinct(data.get("logs") or []):
                     print(f"[generate]   {line}")
                 return url
             if status in TERMINAL_BAD:
                 error = data.get("error") or {}
                 message = error.get("message") or error.get("raw_message") or data
+                # The top-level message is a category, not a cause. A real
+                # rejection came back as "Your content violated community
+                # guidelines" while the logs said "rejected due to copyright
+                # restrictions" -- the first cannot be acted on, the second
+                # names the input to change. Only the exception text reaches
+                # the manifest, so the logs have to travel inside it.
+                reasons = _distinct(data.get("logs") or [])
+                for line in reasons:
+                    print(f"[generate]   {line}")
+                if reasons:
+                    message = f"{message} -- {' | '.join(reasons)}"
                 raise RuntimeError(f"task {status}: {message}")
 
         raise RuntimeError(f"task {task_id} did not finish within {self.timeout:.0f}s")
