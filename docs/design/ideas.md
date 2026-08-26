@@ -1,8 +1,8 @@
-# Three ideas, not started
+# Ideas, not started
 
-*Recorded 2026-08-24.* Directions worth trying, with what each one would actually
-test. None of these is scheduled; this file exists so the reasoning is not
-re-derived later.
+*Recorded 2026-08-24; idea 4 added 2026-08-26.* Directions worth trying, with
+what each one would actually test. None of these is scheduled; this file exists
+so the reasoning is not re-derived later.
 
 ## 1 — Self-hosted generation on Modal, compared against Seedance
 
@@ -84,6 +84,41 @@ scene's metric, Z-up world is likely the real work here, not the generation.
 **Same reproducibility question as idea 2**, sharper: a generated mesh must be
 cached and content-addressed, or the spec no longer reproduces the shot. Generate
 once, store by hash, reference by hash.
+
+## 4 — Feeding the previous shot back as a second reference video
+
+*Recorded 2026-08-26.* For a sequence, attach the **previous shot's generated
+output** as a second video reference alongside the blockout and the character
+pictures, so the next shot inherits grade, grain and identity from what actually
+came out rather than only from what was asked for.
+
+**Provenance, because it matters here.** This is not official guidance. MiniMax's
+platform docs do not address chaining generations at all; their advice for
+consistency is a repeated character block and the same reference image every
+time. The chaining idea comes from [one vendor
+blog](https://www.atlascloud.ai/blog/tips/minimax-h3-reference-to-video)
+*(low confidence)*. See [h3-prompting.md](../research/h3-prompting.md).
+
+**What it tests.** Whether appearance continuity across a cut is better served by
+conditioning on a real previous frame sequence than by re-deriving the look from
+stills each time. H3 accepts up to 3 reference videos, so the capacity is there.
+
+**What it changes.** A provider change: we attach exactly one video, the
+blockout, and `validate_h3_prompt` raises on any `<Video 2>`. That constraint was
+deliberate and would need widening rather than removing — the blockout must stay
+`<Video 1>`, and a second video needs its own role stated in the prompt or it
+will compete with the blockout for structural authority.
+
+**Where it plausibly fails.** Conditioning each shot on the last one's *output*
+is the classic way drift compounds along a sequence: shot 4 inherits shot 3's
+mistakes as ground truth. It may also fight the blockout, since a previous shot
+is a video reference with its own camera move.
+
+**Run it as its own test, not inside a spot.** The
+[rooftop spot](../../projects/spot/script.md) deliberately does the cheap thing
+first — same character pictures everywhere, no chaining — so that if identity
+holds, this idea is unnecessary, and if it does not, there is a specific failure
+for chaining to be measured against.
 
 ## What ties them together
 

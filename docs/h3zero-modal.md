@@ -126,6 +126,22 @@ Omit the field and it defaults to the distillation matching the checkpoint:
 | `fl2va` | `turbo_8` | `fl2v_turbo_8` |
 | either | `base`, `spectrum` | none — samples the checkpoint directly at 30 steps |
 
+That last row is the whole story for `base` and `spectrum` in normal use: their
+`lora` is `None`, `resolve_accelerator_lora` returns early, and no
+`LoraLoaderModelOnly` node is built at all. Their `lora_strength: None` in
+`SAMPLING_PROFILES` is the matching record of "there is no LoRA here", and it is
+never read.
+
+**The one hole is the explicit path.** Naming an accelerator by hand — `--lora`,
+`AI_RENDER_H3ZERO_LORA`, or `generation.h3zero.accelerator_lora` — skips that
+early return, because the check is on whether the *caller* left the field blank,
+not on whether the profile has a LoRA at all. The node is then built with
+`strength_model: None`. The combination it comes from is not a question worth
+answering the way a crossed checkpoint is: a step distillation and a 30-step
+profile contradict each other outright, so the fix is to refuse the pairing at
+resolve time, not to invent a strength for it. Unfixed, and reachable only by
+asking for it.
+
 Two asymmetries worth knowing when reading results: the Ref2V distillation is
 **v0.1** against the fl2v line's v1.0/v1.1, and the fl2v 4-step file is labelled
 `768p` while this project renders at 480p. Neither is a defect, but neither is a
