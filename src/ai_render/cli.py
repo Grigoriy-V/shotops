@@ -303,6 +303,18 @@ def cmd_generate(args):
         print(f"error: no blockout at {_rel(preview)} -- run `render` first", file=sys.stderr)
         return 2
 
+    # A cut sequence's structural reference is several shots joined end to end,
+    # which no single scene renders: one scene has one camera and cannot cut
+    # inside itself. The take is still resolved above and still owns the output
+    # directory and the manifest, so the run stays attached to a scene that can
+    # be re-rendered -- only the clip sent as the reference changes.
+    override = getattr(args, "reference", None)
+    if override:
+        preview = Path(override)
+        if not preview.is_file():
+            print(f"error: no reference video at {override}", file=sys.stderr)
+            return 2
+
     # Overrides let you probe cheaply without editing the scene, then rerun at
     # the scene's own settings once the shot is right.
     if args.resolution:
@@ -365,6 +377,10 @@ def cmd_generate(args):
         out_dir,
         scene=target.label,
         take=take.name,
+        # Only when overridden, and then it matters: without it the manifest
+        # names a take and nothing else, and a reader would reasonably assume
+        # that take's blockout is what the model was conditioned on.
+        **({"reference": str(_rel(preview))} if override else {}),
         provider=provider.name,
         model=resolved_model,
         # Which checkpoint conditions on the references, when the provider has
@@ -688,6 +704,13 @@ def main(argv=None):
                 metavar="PATH",
                 help="look reference image, repeatable -- first becomes @image1. "
                 "Beats the scene's 'style_references', which beats <take>/styleframe.png.",
+            )
+            p.add_argument(
+                "--reference",
+                metavar="VIDEO",
+                help="send this clip as the structural reference instead of the take's "
+                "blockout. For a cut sequence, whose reference is several shots joined "
+                "end to end and so cannot be rendered from any single scene.",
             )
         if name == "audit":
             p.add_argument(

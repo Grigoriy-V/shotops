@@ -376,6 +376,24 @@ throwaway probe.
 Run `check` before `render` and `render` before `generate` — each stage is free
 until the last one, so failures should surface as early as possible.
 
+### Generating a cut, not a shot
+
+```bash
+python -m ai_render generate <scene> --provider h3zero --reference <cut.mp4>
+```
+
+`--reference` sends a clip of your choosing as the structural reference instead
+of the take's own blockout. It exists for one case: **a sequence's reference is
+several shots joined end to end, and no scene can render that.** A scene has one
+camera and cannot cut inside itself, so an edit only exists as a file — see
+[`cut/`](../projects/spot/sequences/seq_010/cut/sources.md).
+
+The take is still resolved as usual and still owns the output directory and the
+manifest, so the run stays attached to a scene that can be re-rendered. Only the
+clip the model is conditioned on changes, and the manifest gains a `reference`
+field naming it. Without that field the manifest would name a take and nothing
+else, and a reader would reasonably assume that take's blockout was what ran.
+
 ### Watching several takes together
 
 The contact sheet answers *is the camera where the blockout puts it at 43%* and
