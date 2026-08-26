@@ -34,6 +34,10 @@ def world_bounds(objects):
     lo = Vector((1e9, 1e9, 1e9))
     hi = Vector((-1e9, -1e9, -1e9))
     for obj in objects:
+        # An empty has no geometry to bound, and counting it as a point at its
+        # own origin would drag the frame toward a thing that never renders.
+        if obj.data is None:
+            continue
         for corner in obj.bound_box:
             point = obj.matrix_world @ Vector(corner)
             for i in range(3):
@@ -99,7 +103,12 @@ def main(spec_path, out_dir):
     scene = bpy.context.scene
     duration = float(spec.get("duration", 5.0))
 
-    built = [build_scene.add_object(o) for o in spec.get("objects", [])]
+    objects = [(build_scene.add_object(o), o) for o in spec.get("objects", [])]
+    build_scene.link_parents(objects)
+    # Parented parts sit in their point's space, so their own matrices are
+    # local; the bounds have to come from the evaluated world transforms.
+    bpy.context.view_layer.update()
+    built = [obj for obj, _ in objects]
     lo, hi = world_bounds(built) if built else (Vector((0, 0, 0)), Vector((1, 1, 1)))
     size = max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) or 1.0
 

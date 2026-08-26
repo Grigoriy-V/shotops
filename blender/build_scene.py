@@ -67,9 +67,32 @@ def build_mesh(spec):
     return obj
 
 
+def link_parents(objects):
+    """Hang each object that names a parent off that parent.
+
+    Children of a parent are written in *its* space, not the world's, so no
+    parent inverse is set: the point carries the instance's origin and yaw and
+    the parts carry their offsets within it. That is the whole reason this
+    exists -- one animated point instead of the same move copied onto ten parts.
+    """
+    by_name = {obj.name: obj for obj, _ in objects}
+    for obj, spec in objects:
+        parent = spec.get("parent")
+        if not parent:
+            continue
+        if parent not in by_name:
+            raise ValueError("object %r names a parent %r that is not in the scene"
+                             % (obj.name, parent))
+        obj.parent = by_name[parent]
+
+
 def add_object(spec):
     kind = spec.get("type", "cube")
-    if kind == "mesh":
+    if kind == "empty":
+        # Renders nothing; it is here to be parented to and animated.
+        obj = bpy.data.objects.new(spec.get("name", "empty"), None)
+        bpy.context.scene.collection.objects.link(obj)
+    elif kind == "mesh":
         obj = build_mesh(spec)
     elif kind not in PRIMITIVES:
         raise ValueError(
@@ -244,6 +267,7 @@ def main(spec_path, out_path):
     frames = max(1, round(float(spec.get("duration", 5.0)) * fps))
 
     objects = [(add_object(o), o) for o in spec.get("objects", [])]
+    link_parents(objects)
 
     cam_spec = spec.get("camera", {})
     cam_data = bpy.data.cameras.new("Camera")

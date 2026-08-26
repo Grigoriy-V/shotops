@@ -48,6 +48,7 @@ def main(spec_path, out_dir, count=DEFAULT_COUNT):
     frames = max(1, round(float(spec.get("duration", 5.0)) * fps))
 
     objects = [(build_scene.add_object(o), o) for o in spec.get("objects", [])]
+    build_scene.link_parents(objects)
 
     cam_spec = spec.get("camera", {})
     cam_data = bpy.data.cameras.new("Camera")

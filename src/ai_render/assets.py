@@ -148,6 +148,27 @@ def expand(spec, assets_dir):
         yaw = _yaw(instance)
         cos, sin = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
 
+        # An animated instance hangs its parts off an empty at its own origin
+        # and lets Blender compose the two transforms. A static one is baked
+        # flat, as before -- an extra object per instance in every scene would
+        # change every scene_id to buy nothing.
+        #
+        # The two branches differ in whose space the parts are written in.
+        # Parented, they stay local: the origin and the yaw live on the point,
+        # so a move is authored once instead of being copied onto ten parts,
+        # and `_compose` is called with no yaw to fold -- which is why a
+        # parented instance can carry parts that turn about Z *and* X or Y,
+        # where a baked one cannot.
+        animation = instance.get("animation")
+        if animation:
+            made.append({
+                "name": name,
+                "type": "empty",
+                "location": origin,
+                "rotation": [0.0, 0.0, yaw],
+                "animation": animation,
+            })
+
         for part in asset["parts"]:
             part_name = part.get("name", "part")
             obj = {k: v for k, v in part.items() if k not in ("name", "size_from", "depth_from")}
@@ -155,13 +176,17 @@ def expand(spec, assets_dir):
 
             unit = part.get("location", [0.0, 0.0, 0.0])
             local = [unit[0] * size[0], unit[1] * size[1], unit[2] * size[2]]
-            # The yaw turns the part's offset around the instance origin; Z is
-            # untouched because the turn is about Z.
-            obj["location"] = [
-                origin[0] + local[0] * cos - local[1] * sin,
-                origin[1] + local[0] * sin + local[1] * cos,
-                origin[2] + local[2],
-            ]
+            if animation:
+                obj["parent"] = name
+                obj["location"] = local
+            else:
+                # The yaw turns the part's offset around the instance origin; Z
+                # is untouched because the turn is about Z.
+                obj["location"] = [
+                    origin[0] + local[0] * cos - local[1] * sin,
+                    origin[1] + local[0] * sin + local[1] * cos,
+                    origin[2] + local[2],
+                ]
 
             # A mesh has no size field to take the footprint through, so its
             # vertices ride on the object scale. That is the whole point of it:
@@ -185,7 +210,9 @@ def expand(spec, assets_dir):
                         )
                     obj[field] = part[field] * size[AXES[axis]]
 
-            obj["rotation"] = _compose(part.get("rotation", [0.0, 0.0, 0.0]), yaw, part_name)
+            obj["rotation"] = _compose(
+                part.get("rotation", [0.0, 0.0, 0.0]), 0.0 if animation else yaw, part_name
+            )
             made.append(obj)
 
     expanded = dict(spec)

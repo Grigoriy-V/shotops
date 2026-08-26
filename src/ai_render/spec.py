@@ -11,7 +11,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-KNOWN_TYPES = {"cube", "plane", "sphere", "cylinder", "cone", "torus", "mesh"}
+# `empty` renders nothing. It exists to be a parent: an animated instance
+# expands into one empty at its origin plus its parts hung off it, so the move
+# is authored once on the point instead of copied onto every part.
+KNOWN_TYPES = {"cube", "plane", "sphere", "cylinder", "cone", "torus", "mesh", "empty"}
 # "smooth" is the only one that looks past its own segment: it carries velocity
 # through the key instead of stopping on it. A continuous move wants it.
 KNOWN_EASE = {"linear", "ease", "in", "out", "smooth"}
@@ -131,6 +134,15 @@ def validate(spec):
                 _fail(f"{where}.color", f"components must be in 0..1, got {obj['color']!r}")
         if "animation" in obj:
             _check_animation(f"{where}.animation", obj["animation"], duration)
+        if "parent" in obj and not isinstance(obj["parent"], str):
+            _fail(f"{where}.parent", f"must be the name of another object, got {obj['parent']!r}")
+
+    # Parents are resolved by name in Blender, where a miss is a silent
+    # un-parented object rather than an error, so it is caught here instead.
+    for index, obj in enumerate(objects):
+        parent = obj.get("parent")
+        if parent is not None and parent not in names:
+            _fail(f"objects[{index}].parent", f"no object named {parent!r} in this scene")
 
     role = spec.get("role", "variant")
     if role not in KNOWN_ROLES:
