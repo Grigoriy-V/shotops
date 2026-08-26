@@ -1,0 +1,40 @@
+{
+  "role": "asset",
+  "note": "A deck light mast: pole, crossbar, two heads. An asset rather than six repeated cylinders because the heads are what make a pole read as a light rather than as a pipe, and that shape should be defined once. Unit box is 1.6 m across the crossbar by 0.4 deep by 6.0 tall.",
+  "parts": [
+    {
+      "name": "pole",
+      "type": "cylinder",
+      "size": 0.047,
+      "size_from": "x",
+      "depth": 1.0,
+      "depth_from": "z",
+      "location": [0.0, 0.0, 0.5],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "crossbar",
+      "type": "cube",
+      "size": 1.0,
+      "scale": [1.0, 0.12, 0.025],
+      "location": [0.0, 0.0, 0.975],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "head_l",
+      "type": "cube",
+      "size": 1.0,
+      "scale": [0.3, 0.55, 0.035],
+      "location": [-0.34, 0.0, 0.945],
+      "color": [0.62, 0.62, 0.63]
+    },
+    {
+      "name": "head_r",
+      "type": "cube",
+      "size": 1.0,
+      "scale": [0.3, 0.55, 0.035],
+      "location": [0.34, 0.0, 0.945],
+      "color": [0.62, 0.62, 0.63]
+    }
+  ]
+}

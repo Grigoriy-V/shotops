@@ -1,0 +1,8 @@
+{
+  "scene": "face_a",
+  "duration": 2.5,
+  "note": "Shot 2b of 4, cut in between the door and the departure. Full face, close. The morning sun is straight on her; she squints into it and smiles. This is the shot the character reference has to carry -- shot 1 is her back and shot 3 is glass at speed, so the face reads cleanly here and nowhere else. The prompt below is a first draft about light and surfaces only; the structured H3 prompt with the <Subject 1> block is written last. See ../../../script.md.",
+  "generation": {
+    "prompt": "Photoreal, shot on an 85mm lens, shallow depth of field. Close on the face of a slim blonde woman in a tailored charcoal suit and dark-framed glasses, hair pulled back tight. The low morning sun is straight on her: she narrows her eyes against it and smiles. Warm raking light across her cheek and the rim of her glasses, the dark flank of a parked saloon soft behind her, thin haze, cold blue shadow beyond."
+  }
+}

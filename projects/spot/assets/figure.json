@@ -1,0 +1,95 @@
+{
+  "role": "asset",
+  "note": "A standing adult figure in the unit space of its own bounding box, facing +Y like the saloon. Proportioned off a 1.78 m body: shoulder 0.815, hip 0.535, knee 0.28, ankle 0.045 as fractions of height. Limbs are cylinders with `depth_from: z` and `size_from: x` -- the default axes are built for a wheel, where the radius follows height and the width follows the body, and a standing limb wants exactly the opposite. The chest is deliberately narrower than the arm span: the arms hanging outboard of it are what give the silhouette shoulders, and a torso box as wide as the shoulders reads as a barrel. One hue for the whole figure, because colour in a blockout marks a class of thing rather than describing it. The neck is 116 mm across and 200 mm long, and it overlaps the chest by 55 mm and the head by 40 mm on purpose: the first version was a 76 mm stalk that met neither, which is invisible at a walking distance and reads as a lollipop the moment a shot goes close.",
+  "parts": [
+    {
+      "name": "head",
+      "type": "sphere",
+      "size": 0.062,
+      "location": [0.0, 0.012, 0.938],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "neck",
+      "type": "cylinder",
+      "size": 0.129,
+      "size_from": "x",
+      "depth": 0.112,
+      "depth_from": "z",
+      "location": [0.0, 0.0, 0.843],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "chest",
+      "type": "cube",
+      "size": 1.0,
+      "scale": [0.62, 0.68, 0.165],
+      "location": [0.0, 0.0, 0.735],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "hips",
+      "type": "cube",
+      "size": 1.0,
+      "scale": [0.52, 0.62, 0.115],
+      "location": [0.0, 0.0, 0.593],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "arm_l",
+      "type": "cylinder",
+      "size": 0.1,
+      "size_from": "x",
+      "depth": 0.47,
+      "depth_from": "z",
+      "location": [-0.4, 0.01, 0.565],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "arm_r",
+      "type": "cylinder",
+      "size": 0.1,
+      "size_from": "x",
+      "depth": 0.47,
+      "depth_from": "z",
+      "location": [0.4, 0.01, 0.565],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "leg_l",
+      "type": "cylinder",
+      "size": 0.13,
+      "size_from": "x",
+      "depth": 0.49,
+      "depth_from": "z",
+      "location": [-0.2, 0.0, 0.288],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "leg_r",
+      "type": "cylinder",
+      "size": 0.13,
+      "size_from": "x",
+      "depth": 0.49,
+      "depth_from": "z",
+      "location": [0.2, 0.0, 0.288],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "foot_l",
+      "type": "cube",
+      "size": 1.0,
+      "scale": [0.28, 0.76, 0.045],
+      "location": [-0.2, 0.15, 0.022],
+      "color": [0.22, 0.42, 0.72]
+    },
+    {
+      "name": "foot_r",
+      "type": "cube",
+      "size": 1.0,
+      "scale": [0.28, 0.76, 0.045],
+      "location": [0.2, 0.15, 0.022],
+      "color": [0.22, 0.42, 0.72]
+    }
+  ]
+}

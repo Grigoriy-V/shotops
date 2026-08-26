@@ -1,0 +1,16 @@
+{
+  "fps": 24,
+  "resolution": [960, 540],
+  "render": {
+    "stills": 8,
+    "background": [0.04, 0.04, 0.05],
+    "cavity": true,
+    "shadow": true
+  },
+  "generation": {
+    "reference_mode": "video",
+    "aspect_ratio": "16:9",
+    "resolution": "768p",
+    "model": "seedance-2-fast"
+  }
+}

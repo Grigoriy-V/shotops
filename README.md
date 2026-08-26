@@ -176,6 +176,54 @@ Every run is logged with its provider response, cost and verdict in
 what building the blockout taught is in
 [`notes.md`](projects/nyc/sequences/seq_010/sh_0010/notes.md).
 
+### Four shots in one generation
+
+| the cut, four blockout shots joined | `turbo_8` · one pass · 11 m 54 s |
+| --- | --- |
+| ![spot blockout](docs/spot-blockout.gif) | ![spot h3](docs/spot-h3-v002.gif) |
+
+A second project, `spot`: a rooftop car commercial with a person in it, eleven
+seconds, **four shots and three cuts generated as a single clip**. The structural
+reference on the left is not one scene's render — it is the four blockouts cut
+together with ffmpeg and sent whole. One picture went with it, a character sheet
+owning `<Subject 1>` and nothing else, so every surface, the sun and the grade
+had to come from the text.
+
+*The blockout is stretched to the generation's length here, because they are not
+the same length — see the drift below. Matching them by fraction is the only way
+two clips of a cut can be compared at all.*
+
+**The cuts land and the character carries.** Three cuts arrive where the edit put
+them, and the same woman appears in three consecutive shots off a single
+reference image. That is the part worth keeping: a sequence does not have to be
+generated shot by shot and assembled afterwards.
+
+**The camera does not survive everywhere.** Two shots of four lost their angle on
+the first run; the last shot lost it on both runs, with the reference, the
+picture, the profile, the LoRA and the seed all held fixed and only the prompt
+rewritten between them. So the prompt is not the cause, and two candidates
+remain unseparated: the reference is an *edit*, and `<Video 1>` is context
+re-injected each step rather than bound frame-to-frame, so four cuts ask one clip
+to carry four setups — or eight distilled steps is simply the third-ranked
+profile above, and structure adherence is exactly what it spends. One `base` run
+on the same cut separates them.
+
+**Direction of performance did not take.** A beat written explicitly and with
+timings — eyes shut against the low sun, opening to a squint, gaze off-lens —
+came back wrong under both prompts. Writing it more precisely is not, on this
+evidence, what fixes it. The look *did* move, which is where the rewrite spent
+its words.
+
+**The frame grid moved the cuts by 4.9%.** 11.0 s asked for, 277 frames and
+11.542 s returned, so the cuts land near 3.15 / 5.77 / 8.39 instead of
+3.00 / 5.50 / 8.00. Small, and fatal to any comparison made at matched seconds.
+
+And the pipeline has no proper seat for this yet. `generate --reference` sends a
+clip other than the take's own blockout, but the run still has to hang off
+*some* take, so the sequence is owned by a holder scene whose blockout is never
+uploaded. It works and it reads wrong. Runs and verdicts are in
+[`generations.md`](projects/spot/sequences/seq_010/sh_0090/generations.md).
+
 ## Three strands
 
 The project is early, and it is deliberately three things at once, because

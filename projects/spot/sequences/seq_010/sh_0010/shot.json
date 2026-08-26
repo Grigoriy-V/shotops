@@ -1,0 +1,8 @@
+{
+  "scene": "deck_a",
+  "duration": 3.0,
+  "note": "Shot 1 of 3. The driver crosses the deck to the car. The prompt below is a first draft about light and surfaces only -- the structured H3 prompt, with the <Subject 1> block, is written last, once all three shots are blocked and the character references exist. See ../../../script.md.",
+  "generation": {
+    "prompt": "Photoreal, shot on 35mm. A rooftop parking deck at first light. The low sun rakes across bare concrete, still damp, throwing long shadows. A dark metallic saloon holds a single long reflection of the pale sky down its flank. A slim blonde woman in a tailored charcoal suit and dark-framed glasses walks across the deck toward it. Cold blue shadow against warm low sun, thin haze in the air, the city beyond the parapet still in silhouette."
+  }
+}

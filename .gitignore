@@ -9,5 +9,9 @@
 # purpose -- the blockout, and the record of how the shot got decided.
 out/
 
+# Stills pulled back out of a committed render, for a contact sheet or a
+# compare. The mp4 beside them is the record; these are one ffmpeg call away.
+*_frames/
+
 __pycache__/
 *.pyc

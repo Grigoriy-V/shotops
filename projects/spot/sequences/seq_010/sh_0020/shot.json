@@ -1,0 +1,8 @@
+{
+  "scene": "door_a",
+  "duration": 2.5,
+  "note": "Shot 2 of 3. She is at the driver's door, looks into the low sun, and reaches for the handle. The door stays shut -- there is no open-door geometry, and the reach is a gesture the prompt asks for rather than a move the blockout carries. This is the shot where her face reads. The prompt below is a first draft about light and surfaces only; the structured H3 prompt with the <Subject 1> block is written last. See ../../../script.md.",
+  "generation": {
+    "prompt": "Photoreal, shot on a 50mm lens. A rooftop parking deck at first light. A slim blonde woman in a tailored charcoal suit, white shirt and dark-framed glasses stands at the driver's door of a dark metallic saloon, hair pulled back tight. She looks into the low sun, smiling, and reaches for the door handle. Warm low sun across her face, cold blue shadow on the concrete behind, thin haze, the parked car holding a long reflection of the pale sky down its flank."
+  }
+}

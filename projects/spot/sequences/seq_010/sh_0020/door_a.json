@@ -1,0 +1,251 @@
+{
+  "duration": 2.5,
+  "note": "Shot 2. The deck, parapet, bay lines, masts and the car's parked position are copied from sh_0010/deck_a unchanged -- same place, second camera. She stands at the driver's door on the car's -Y flank, facing the low sun, and turns a little toward the door across the shot. The reach for the handle is not in the blockout: the arms are parts of one rigid asset, so what is authored here is where she stands and when she turns, and the gesture comes from the prompt. Camera pushes in from 4.8 m to 3.8 m on a 50 mm lens, aimed at the door rather than at her -- which is also what keeps her off-centre, since an aim on a subject centres it by construction.",
+  "instances": [
+    {
+      "asset": "sedan_solid",
+      "name": "car",
+      "location": [-1.4, 6.0, 0.0],
+      "size": [1.9, 4.7, 1.42],
+      "rotation": [0, 0, 90]
+    },
+    {
+      "asset": "figure",
+      "name": "driver",
+      "location": [-2.2, 4.6, 0.0],
+      "size": [0.45, 0.34, 1.78],
+      "rotation": [0, 0, 24],
+      "animation": {
+        "rotation": [
+          {
+            "t": 0.0,
+            "value": [0, 0, 24],
+            "ease": "smooth"
+          },
+          {
+            "t": 1.4,
+            "value": [0, 0, 20],
+            "ease": "smooth"
+          },
+          {
+            "t": 2.5,
+            "value": [0, 0, 5]
+          }
+        ]
+      }
+    },
+    {
+      "asset": "mast",
+      "name": "mast_01",
+      "location": [-9.0, 6.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_02",
+      "location": [-9.0, -8.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_03",
+      "location": [9.5, 6.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_04",
+      "location": [9.5, -8.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    }
+  ],
+  "objects": [
+    {
+      "name": "deck",
+      "type": "plane",
+      "size": 1.0,
+      "location": [0.0, -6.0, 0.0],
+      "scale": [70.0, 46.0, 1.0],
+      "color": [0.3, 0.3, 0.31]
+    },
+    {
+      "name": "parapet",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 14.7, 0.5],
+      "scale": [70.0, 0.3, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 14.7, 1.06],
+      "scale": [70.0, 0.46, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_back",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -26.7, 0.5],
+      "scale": [70.0, 0.3, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_left",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-32.7, -6.0, 0.5],
+      "scale": [0.3, 46.0, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_left_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-32.7, -6.0, 1.06],
+      "scale": [0.46, 46.0, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_right",
+      "type": "cube",
+      "size": 1.0,
+      "location": [32.7, -6.0, 0.5],
+      "scale": [0.3, 46.0, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_right_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [32.7, -6.0, 1.06],
+      "scale": [0.46, 46.0, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_back_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -26.7, 1.06],
+      "scale": [70.0, 0.46, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "bay_01",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, -0.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_02",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 2.1, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_03",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 4.7, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_04",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 7.3, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_05",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 9.9, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_06",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 12.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_07",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, -0.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_08",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 2.1, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_09",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 4.7, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_10",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 7.3, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "lane",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -3.0, 0.01],
+      "scale": [44.0, 0.1, 0.02],
+      "color": [0.39, 0.39, 0.4]
+    },
+    {
+      "name": "stairhead",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-17.0, -18.0, 1.4],
+      "scale": [4.0, 3.2, 2.8],
+      "color": [0.4, 0.4, 0.41]
+    }
+  ],
+  "camera": {
+    "lens": 50.0,
+    "sensor_width": 36.0,
+    "location": [-7.0, 4.9, 1.5],
+    "look_at": [-1.4, 5.05, 1.3],
+    "animation": {
+      "location": [
+        {
+          "t": 0.0,
+          "value": [-7.0, 4.9, 1.5],
+          "ease": "smooth"
+        },
+        {
+          "t": 2.5,
+          "value": [-6.0, 4.6, 1.42]
+        }
+      ]
+    }
+  }
+}

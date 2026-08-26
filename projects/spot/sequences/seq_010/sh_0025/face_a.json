@@ -1,0 +1,246 @@
+{
+  "duration": 2.5,
+  "note": "Shot 2b, cut in between the door and the departure. Full face, tight: 85 mm at 1.45 m. 85 mm at 1.26 m. The chest top is at 1.455 m off the deck and the arms reach 1.424; the bottom edge is set at about 1.53 so both fall out of frame and what is left is the head and the neck. The margin is generous because the frame edge measured off the render sat some 70 mm lower than the lens arithmetic predicted, and the arithmetic is not the thing being judged. The sun is at +Y: that is what shot 1 established, where the camera shot straight into it and she walked toward it. So facing the sun means facing +Y, and the camera has to stand between her and the sun looking back -- which front-lights her, and is the whole point of the shot. She cannot do that at the door, because +Y of the door is the car; she is a step past the car's nose here instead, clear of it. The squint and the smile are prompt beats: the blockout carries where she stands, which way she looks, and for how long. Everything but the camera and the figure is copied from sh_0020/door_a unchanged.",
+  "instances": [
+    {
+      "asset": "sedan_solid",
+      "name": "car",
+      "location": [-1.4, 6.0, 0.0],
+      "size": [1.9, 4.7, 1.42],
+      "rotation": [0, 0, 90]
+    },
+    {
+      "asset": "figure",
+      "name": "driver",
+      "location": [-4.6, 4.6, 0.0],
+      "size": [0.45, 0.34, 1.78],
+      "rotation": [0, 0, 5],
+      "animation": {
+        "rotation": [
+          {
+            "t": 0.0,
+            "value": [0, 0, 5],
+            "ease": "smooth"
+          },
+          {
+            "t": 2.5,
+            "value": [0, 0, -1]
+          }
+        ]
+      }
+    },
+    {
+      "asset": "mast",
+      "name": "mast_01",
+      "location": [-9.0, 6.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_02",
+      "location": [-9.0, -8.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_03",
+      "location": [9.5, 6.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_04",
+      "location": [9.5, -8.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    }
+  ],
+  "objects": [
+    {
+      "name": "deck",
+      "type": "plane",
+      "size": 1.0,
+      "location": [0.0, -6.0, 0.0],
+      "scale": [70.0, 46.0, 1.0],
+      "color": [0.3, 0.3, 0.31]
+    },
+    {
+      "name": "parapet",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 14.7, 0.5],
+      "scale": [70.0, 0.3, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 14.7, 1.06],
+      "scale": [70.0, 0.46, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_back",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -26.7, 0.5],
+      "scale": [70.0, 0.3, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_left",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-32.7, -6.0, 0.5],
+      "scale": [0.3, 46.0, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_left_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-32.7, -6.0, 1.06],
+      "scale": [0.46, 46.0, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_right",
+      "type": "cube",
+      "size": 1.0,
+      "location": [32.7, -6.0, 0.5],
+      "scale": [0.3, 46.0, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_right_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [32.7, -6.0, 1.06],
+      "scale": [0.46, 46.0, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_back_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -26.7, 1.06],
+      "scale": [70.0, 0.46, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "bay_01",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, -0.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_02",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 2.1, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_03",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 4.7, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_04",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 7.3, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_05",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 9.9, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_06",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 12.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_07",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, -0.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_08",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 2.1, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_09",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 4.7, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_10",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 7.3, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "lane",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -3.0, 0.01],
+      "scale": [44.0, 0.1, 0.02],
+      "color": [0.39, 0.39, 0.4]
+    },
+    {
+      "name": "stairhead",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-17.0, -18.0, 1.4],
+      "scale": [4.0, 3.2, 2.8],
+      "color": [0.4, 0.4, 0.41]
+    }
+  ],
+  "camera": {
+    "lens": 85.0,
+    "sensor_width": 36.0,
+    "location": [-4.6, 5.86, 1.69],
+    "look_at": [-4.6, 4.6, 1.68],
+    "animation": {
+      "location": [
+        {
+          "t": 0.0,
+          "value": [-4.6, 5.86, 1.69],
+          "ease": "smooth"
+        },
+        {
+          "t": 2.5,
+          "value": [-4.6, 5.76, 1.69]
+        }
+      ]
+    }
+  }
+}

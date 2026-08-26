@@ -1,0 +1,8 @@
+{
+  "scene": "exit_a",
+  "duration": 3.0,
+  "note": "Shot 3 of 3. The car stands, the headlights come on, it pulls out and crosses the lens. The camera holds and lets it go. The driver is behind glass at speed here -- a beat, not evidence about whether her face held across the cut. The prompt below is a first draft about light and surfaces only; the structured H3 prompt with the <Subject 1> block is written last. See ../../../script.md.",
+  "generation": {
+    "prompt": "Photoreal, shot on 35mm. A rooftop parking deck at first light, bare concrete and painted bay lines. A dark metallic saloon stands alone in its bay. Its headlights come on, cold white against the warm low sun, and it pulls out and crosses close past the lens. Long shadows, thin haze lifting off the concrete, the low sun flaring along the flank as it passes."
+  }
+}

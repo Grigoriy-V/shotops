@@ -1,0 +1,213 @@
+{
+  "duration": 11.0,
+  "note": "Holder scene for the whole-sequence generation. The location is copied from sh_0030/exit_a; the car is parked and nothing moves. This scene's own blockout is never sent to the model -- the reference is the assembled cut in ../cut/, passed with `generate --reference`, because an edit is several shots joined end to end and one scene has one camera and cannot cut inside itself. The scene exists so the run has a take, an output directory and a scene id to be recorded against.",
+  "instances": [
+    {
+      "asset": "sedan_solid",
+      "name": "car",
+      "location": [-1.4, 6.0, 0.0],
+      "size": [1.9, 4.7, 1.42],
+      "rotation": [0, 0, 90]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_01",
+      "location": [-9.0, 6.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_02",
+      "location": [-9.0, -8.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_03",
+      "location": [9.5, 6.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    },
+    {
+      "asset": "mast",
+      "name": "mast_04",
+      "location": [9.5, -8.0, 0.0],
+      "size": [1.6, 0.4, 6.0]
+    }
+  ],
+  "objects": [
+    {
+      "name": "deck",
+      "type": "plane",
+      "size": 1.0,
+      "location": [0.0, -6.0, 0.0],
+      "scale": [70.0, 46.0, 1.0],
+      "color": [0.3, 0.3, 0.31]
+    },
+    {
+      "name": "parapet",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 14.7, 0.5],
+      "scale": [70.0, 0.3, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, 14.7, 1.06],
+      "scale": [70.0, 0.46, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_back",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -26.7, 0.5],
+      "scale": [70.0, 0.3, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_left",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-32.7, -6.0, 0.5],
+      "scale": [0.3, 46.0, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_left_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-32.7, -6.0, 1.06],
+      "scale": [0.46, 46.0, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_right",
+      "type": "cube",
+      "size": 1.0,
+      "location": [32.7, -6.0, 0.5],
+      "scale": [0.3, 46.0, 1.0],
+      "color": [0.44, 0.44, 0.45]
+    },
+    {
+      "name": "parapet_right_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [32.7, -6.0, 1.06],
+      "scale": [0.46, 46.0, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "parapet_back_cap",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -26.7, 1.06],
+      "scale": [70.0, 0.46, 0.12],
+      "color": [0.5, 0.5, 0.51]
+    },
+    {
+      "name": "bay_01",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, -0.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_02",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 2.1, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_03",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 4.7, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_04",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 7.3, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_05",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 9.9, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_06",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-1.4, 12.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_07",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, -0.5, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_08",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 2.1, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_09",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 4.7, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "bay_10",
+      "type": "cube",
+      "size": 1.0,
+      "location": [7.6, 7.3, 0.01],
+      "scale": [5.2, 0.12, 0.02],
+      "color": [0.52, 0.52, 0.53]
+    },
+    {
+      "name": "lane",
+      "type": "cube",
+      "size": 1.0,
+      "location": [0.0, -3.0, 0.01],
+      "scale": [44.0, 0.1, 0.02],
+      "color": [0.39, 0.39, 0.4]
+    },
+    {
+      "name": "stairhead",
+      "type": "cube",
+      "size": 1.0,
+      "location": [-17.0, -18.0, 1.4],
+      "scale": [4.0, 3.2, 2.8],
+      "color": [0.4, 0.4, 0.41]
+    }
+  ],
+  "camera": {
+    "lens": 35.0,
+    "sensor_width": 36.0,
+    "location": [-11.0, 2.6, 0.7],
+    "look_at": [-4.0, 6.0, 0.9]
+  }
+}
