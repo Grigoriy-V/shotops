@@ -17,13 +17,19 @@ from pathlib import Path
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
 
 
-def biased_positions(total: int, keep: int, power: float = 3.0, center: float = 0.5) -> list[int]:
+def biased_positions(
+    total: int,
+    keep: int,
+    power: float = 3.0,
+    center: float = 0.5,
+    linear_mix: float = 0.0,
+) -> list[int]:
     """Return ``keep`` distinct zero-based indices, including both endpoints.
 
     A power of 1 is uniform.  Values above 1 make the mapping flat at
     ``center``: successive kept frames are closer there and farther apart at
-    the beginning and end.  This is useful when the move accelerates from a
-    near-static opening and decelerates before the final frame.
+    the beginning and end. ``linear_mix`` (0..1) retains a minimum central
+    step: 0 is the full curve, while 1 is uniform selection.
     """
     if total < 1:
         raise ValueError("the sequence contains no frames")
@@ -33,6 +39,8 @@ def biased_positions(total: int, keep: int, power: float = 3.0, center: float = 
         raise ValueError("--power must be at least 1 (1 means uniform selection)")
     if not 0 < center < 1:
         raise ValueError("--center must be strictly between 0 and 1")
+    if not 0 <= linear_mix <= 1:
+        raise ValueError("--linear-mix must be from 0 to 1")
     if keep == 1:
         return [0]
 
@@ -43,6 +51,7 @@ def biased_positions(total: int, keep: int, power: float = 3.0, center: float = 
             fraction = center * (1 - (1 - 2 * u) ** power)
         else:
             fraction = center + (1 - center) * (2 * u - 1) ** power
+        fraction = linear_mix * u + (1 - linear_mix) * fraction
         proposed.append(round(fraction * (total - 1)))
 
     # A simple left-to-right repair of duplicate rounded positions would push
@@ -75,9 +84,17 @@ def image_frames(folder: Path) -> list[Path]:
     )
 
 
-def select(source: Path, output: Path, keep: int, power: float, center: float, overwrite: bool) -> list[Path]:
+def select(
+    source: Path,
+    output: Path,
+    keep: int,
+    power: float,
+    center: float,
+    linear_mix: float,
+    overwrite: bool,
+) -> list[Path]:
     frames = image_frames(source)
-    indices = biased_positions(len(frames), keep, power, center)
+    indices = biased_positions(len(frames), keep, power, center, linear_mix)
     output.mkdir(parents=True, exist_ok=True)
     chosen = [frames[index] for index in indices]
     collisions = [output / frame.name for frame in chosen if (output / frame.name).exists()]
@@ -92,6 +109,7 @@ def select(source: Path, output: Path, keep: int, power: float, center: float, o
         "kept_frame_count": len(chosen),
         "power": power,
         "center": center,
+        "linear_mix": linear_mix,
         "selected": [
             {"source_index": index + 1, "file": frames[index].name}
             for index in indices
@@ -111,6 +129,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, help="destination directory (default: <source>_selected_<keep>)")
     parser.add_argument("--power", type=float, default=3.0, help="middle-density curve; 1 is uniform, higher removes more at the ends")
     parser.add_argument("--center", type=float, default=0.5, help="0..1 location of the fastest part of the move")
+    parser.add_argument("--linear-mix", type=float, default=0.0, help="0..1 blend with uniform selection; raises the minimum central spacing")
     parser.add_argument("--overwrite", action="store_true", help="replace same-named selected frames in the output")
     args = parser.parse_args()
 
@@ -118,9 +137,9 @@ def main() -> None:
     if not source.is_dir():
         parser.error(f"source is not a directory: {source}")
     output = (args.output or source.with_name(f"{source.name}_selected_{args.keep}")).resolve()
-    chosen = select(source, output, args.keep, args.power, args.center, args.overwrite)
+    chosen = select(source, output, args.keep, args.power, args.center, args.linear_mix, args.overwrite)
     print(f"[select] {len(chosen)} of {len(image_frames(source))} frames -> {output}")
-    print(f"[select] power={args.power:g}, center={args.center:g}; first={chosen[0].name}, last={chosen[-1].name}")
+    print(f"[select] power={args.power:g}, center={args.center:g}, linear_mix={args.linear_mix:g}; first={chosen[0].name}, last={chosen[-1].name}")
 
 
 if __name__ == "__main__":

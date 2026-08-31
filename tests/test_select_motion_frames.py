@@ -28,6 +28,13 @@ class BiasedPositionsTest(unittest.TestCase):
         positions = MODULE.biased_positions(124, 50, power=3, center=0.65)
         self.assertAlmostEqual(positions[24] / 123, 0.65, delta=0.03)
 
+    def test_linear_mix_relaxes_the_central_cluster(self):
+        curved = MODULE.biased_positions(124, 50, power=2.5, linear_mix=0)
+        relaxed = MODULE.biased_positions(124, 50, power=2.5, linear_mix=0.35)
+        curved_ones = sum(right - left == 1 for left, right in zip(curved, curved[1:]))
+        relaxed_ones = sum(right - left == 1 for left, right in zip(relaxed, relaxed[1:]))
+        self.assertLess(relaxed_ones, curved_ones)
+
 
 if __name__ == "__main__":
     unittest.main()
