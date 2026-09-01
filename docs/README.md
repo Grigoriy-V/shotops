@@ -29,6 +29,17 @@ wrong.
 | [design/camera-orientation.md](design/camera-orientation.md) | Why the camera has `roll`, `pan` and `tilt` on top of `look_at` |
 | [design/ideas.md](design/ideas.md) | Directions considered and not started, with what each would test |
 
+## Writing — the project explained outward
+
+| | |
+| --- | --- |
+| [writing/shotops-ru.md](writing/shotops-ru.md) | The long-form article. Russian for now; an English version will sit beside it |
+
+Not a doc in the sense the other three are. It argues rather than specifies, and
+it is written for someone who has never seen the repository — so every number in
+it is checked against the repository, and nothing is claimed there that is not
+demonstrated here.
+
 ## Research — the ground it stands on
 
 [research/](research/) — prior art, which models honour a blockout, agentic

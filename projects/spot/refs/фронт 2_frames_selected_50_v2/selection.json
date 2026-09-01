@@ -1,0 +1,210 @@
+{
+  "source": "D:\\ML\\Ai_render\\projects\\spot\\refs\\фронт 2_frames",
+  "source_frame_count": 124,
+  "kept_frame_count": 50,
+  "power": 2.5,
+  "center": 0.5,
+  "linear_mix": 0.5,
+  "selected": [
+    {
+      "source_index": 1,
+      "file": "фронт 2_frame_0001.png"
+    },
+    {
+      "source_index": 5,
+      "file": "фронт 2_frame_0005.png"
+    },
+    {
+      "source_index": 9,
+      "file": "фронт 2_frame_0009.png"
+    },
+    {
+      "source_index": 13,
+      "file": "фронт 2_frame_0013.png"
+    },
+    {
+      "source_index": 17,
+      "file": "фронт 2_frame_0017.png"
+    },
+    {
+      "source_index": 21,
+      "file": "фронт 2_frame_0021.png"
+    },
+    {
+      "source_index": 24,
+      "file": "фронт 2_frame_0024.png"
+    },
+    {
+      "source_index": 27,
+      "file": "фронт 2_frame_0027.png"
+    },
+    {
+      "source_index": 30,
+      "file": "фронт 2_frame_0030.png"
+    },
+    {
+      "source_index": 33,
+      "file": "фронт 2_frame_0033.png"
+    },
+    {
+      "source_index": 36,
+      "file": "фронт 2_frame_0036.png"
+    },
+    {
+      "source_index": 39,
+      "file": "фронт 2_frame_0039.png"
+    },
+    {
+      "source_index": 41,
+      "file": "фронт 2_frame_0041.png"
+    },
+    {
+      "source_index": 43,
+      "file": "фронт 2_frame_0043.png"
+    },
+    {
+      "source_index": 46,
+      "file": "фронт 2_frame_0046.png"
+    },
+    {
+      "source_index": 48,
+      "file": "фронт 2_frame_0048.png"
+    },
+    {
+      "source_index": 50,
+      "file": "фронт 2_frame_0050.png"
+    },
+    {
+      "source_index": 51,
+      "file": "фронт 2_frame_0051.png"
+    },
+    {
+      "source_index": 53,
+      "file": "фронт 2_frame_0053.png"
+    },
+    {
+      "source_index": 55,
+      "file": "фронт 2_frame_0055.png"
+    },
+    {
+      "source_index": 56,
+      "file": "фронт 2_frame_0056.png"
+    },
+    {
+      "source_index": 58,
+      "file": "фронт 2_frame_0058.png"
+    },
+    {
+      "source_index": 59,
+      "file": "фронт 2_frame_0059.png"
+    },
+    {
+      "source_index": 61,
+      "file": "фронт 2_frame_0061.png"
+    },
+    {
+      "source_index": 62,
+      "file": "фронт 2_frame_0062.png"
+    },
+    {
+      "source_index": 63,
+      "file": "фронт 2_frame_0063.png"
+    },
+    {
+      "source_index": 64,
+      "file": "фронт 2_frame_0064.png"
+    },
+    {
+      "source_index": 66,
+      "file": "фронт 2_frame_0066.png"
+    },
+    {
+      "source_index": 67,
+      "file": "фронт 2_frame_0067.png"
+    },
+    {
+      "source_index": 69,
+      "file": "фронт 2_frame_0069.png"
+    },
+    {
+      "source_index": 70,
+      "file": "фронт 2_frame_0070.png"
+    },
+    {
+      "source_index": 72,
+      "file": "фронт 2_frame_0072.png"
+    },
+    {
+      "source_index": 74,
+      "file": "фронт 2_frame_0074.png"
+    },
+    {
+      "source_index": 75,
+      "file": "фронт 2_frame_0075.png"
+    },
+    {
+      "source_index": 77,
+      "file": "фронт 2_frame_0077.png"
+    },
+    {
+      "source_index": 79,
+      "file": "фронт 2_frame_0079.png"
+    },
+    {
+      "source_index": 82,
+      "file": "фронт 2_frame_0082.png"
+    },
+    {
+      "source_index": 84,
+      "file": "фронт 2_frame_0084.png"
+    },
+    {
+      "source_index": 86,
+      "file": "фронт 2_frame_0086.png"
+    },
+    {
+      "source_index": 89,
+      "file": "фронт 2_frame_0089.png"
+    },
+    {
+      "source_index": 92,
+      "file": "фронт 2_frame_0092.png"
+    },
+    {
+      "source_index": 95,
+      "file": "фронт 2_frame_0095.png"
+    },
+    {
+      "source_index": 98,
+      "file": "фронт 2_frame_0098.png"
+    },
+    {
+      "source_index": 101,
+      "file": "фронт 2_frame_0101.png"
+    },
+    {
+      "source_index": 104,
+      "file": "фронт 2_frame_0104.png"
+    },
+    {
+      "source_index": 108,
+      "file": "фронт 2_frame_0108.png"
+    },
+    {
+      "source_index": 112,
+      "file": "фронт 2_frame_0112.png"
+    },
+    {
+      "source_index": 116,
+      "file": "фронт 2_frame_0116.png"
+    },
+    {
+      "source_index": 120,
+      "file": "фронт 2_frame_0120.png"
+    },
+    {
+      "source_index": 124,
+      "file": "фронт 2_frame_0124.png"
+    }
+  ]
+}
